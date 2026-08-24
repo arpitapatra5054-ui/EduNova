@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EduNova - Learning Progress Tracker</title>
+    <link rel="icon" href="data:,">
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <!-- ================= HEADER ================= -->
+
+    <header class="header">
+
+        <div class="logo">
+            EduNova
+        </div>
+
+        <p>
+            Smart Student Learning & Progress Tracking System
+        </p>
+
+    </header>
+
+
+    <!-- ================= MAIN ================= -->
+
+    <main>
+
+        <!-- WELCOME -->
+
+        <section class="welcome">
+
+            <h1>
+                Learn Smarter. Track Better.
+            </h1>
+
+            <p>
+                Take a quiz, discover your weak topics,
+                and get a personalized study plan.
+            </p>
+
+        </section>
+
+
+        <!-- ================= SUBJECT SECTION ================= -->
+
+        <section class="card" id="subjectSection">
+
+            <h2>🎓 Select Your Subject</h2>
+
+            <p class="description">
+                Choose a subject to start your assessment.
+            </p>
+
+            <select id="subjectSelect">
+
+                <option value="">
+                    -- Select Subject --
+                </option>
+
+                <option value="Data Structure">
+                    Data Structure
+                </option>
+
+                <option value="C Programming">
+                    C Programming
+                </option>
+
+                <option value="Operating System">
+                    Operating System
+                </option>
+
+                <option value="Computer Network">
+                    Computer Network
+                </option>
+
+            </select>
+
+            <button
+            type="button"
+                onclick="startQuiz()">
+
+                Start Quiz
+
+            </button>
+
+        </section>
+
+
+        <!-- ================= QUIZ SECTION ================= -->
+
+        <section
+            class="card hidden"
+            id="quizSection">
+
+            <div class="section-title">
+
+                <h2>📝 Quiz</h2>
+
+                <span id="quizSubject"></span>
+
+            </div>
+
+            <p class="description">
+
+                Answer all questions carefully.
+
+            </p>
+
+            <div id="quizContainer"></div>
+
+            <button
+            type="button"
+                onclick="submitQuiz()">
+
+                Submit Quiz
+
+            </button>
+
+        </section>
+
+
+        <!-- ================= RESULT SECTION ================= -->
+
+        <section
+            class="card hidden"
+            id="resultSection">
+
+            <h2>📊 Performance Analysis</h2>
+
+            <div id="resultContainer"></div>
+
+        </section>
+
+
+        <!-- ================= STUDY PLAN ================= -->
+
+        <section
+            class="card hidden"
+            id="studySection">
+
+            <h2>📚 Personalized Study Plan</h2>
+
+            <p class="description">
+
+                Your plan is based on the topics
+                where you need the most improvement.
+
+            </p>
+
+            <div id="studyPlanContainer"></div>
+
+        </section>
+
+
+        <!-- ================= PROGRESS ================= -->
+
+        <section
+            class="card hidden"
+            id="progressSection">
+
+            <h2>📈 Your Progress</h2>
+
+            <div id="progressContainer"></div>
+
+        </section>
+
+
+        <!-- ================= TRY AGAIN ================= -->
+
+        <section
+            class="card hidden"
+            id="actionSection">
+
+            <button
+                class="secondary-btn"
+                onclick="takeQuizAgain()">
+
+                🔄 Take Quiz Again
+
+            </button>
+
+            <button
+                class="secondary-btn"
+                onclick="goToSubjects()">
+
+                📚 Choose Another Subject
+
+            </button>
+
+        </section>
+
+    </main>
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <footer>
+
+        <p>
+            © 2026 EduNova
+        </p>
+
+        <p>
+            Personalized Learning Through Progress Tracking
+        </p>
+
+    </footer>
+
+
+    <!-- JAVASCRIPT -->
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+</html>
