@@ -4,7 +4,9 @@ from datetime import date, timedelta
 import random
 
 
-app = Flask(__name__,template_folder='.',static_folder='.',static_url_path='')
+import os
+
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 
 app.secret_key = "edunova-sih-secret-key"
 
