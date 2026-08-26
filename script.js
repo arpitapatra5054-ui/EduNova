@@ -977,4 +977,6 @@ function goToSubjects() {
 
 console.log(
     "EduNova Quiz JavaScript loaded successfully."
-);
+);// Function-গুলোকে global window object-এ যুক্ত করা হচ্ছে
+window.openArena = openArena;
+window.startStudent = startStudent;
