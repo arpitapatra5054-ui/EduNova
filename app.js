@@ -1,3 +1,13 @@
+/* =========================================================
+   EDUNOVA - COMPLETE APP.JS
+   Quiz + Meme + Visual Simulator + Debug + Bomb
+   ========================================================= */
+
+
+/* =========================================================
+   GLOBAL VARIABLES
+   ========================================================= */
+
 let currentSubject = "Python";
 
 let quiz = [];
@@ -8,52 +18,83 @@ let score = 0;
 
 let answered = false;
 
+let bombTimer = null;
+
+let bombSeconds = 0;
+
+let debugQuestions = [];
+
+let debugIndex = 0;
+
+let debugScore = 0;
+
+let visualItems = [];
+
+let visualTimer = null;
 
 
-// =====================================================
-// API
-// =====================================================
+/* =========================================================
+   API
+   ========================================================= */
 
 async function api(url, options = {}) {
 
-    const response =
-        await fetch(url, options);
+    try {
 
-    return await response.json();
+        const response = await fetch(url, options);
+
+        return await response.json();
+
+    }
+
+    catch(error) {
+
+        console.error(error);
+
+        showToast("Something went wrong!");
+
+        return {};
+
+    }
+
 }
 
 
 async function post(url, data) {
 
     return api(
+
         url,
+
         {
+
             method: "POST",
 
-            headers:{
+            headers: {
+
                 "Content-Type":
                 "application/json"
+
             },
 
             body:
             JSON.stringify(data)
+
         }
+
     );
 
 }
 
 
+/* =========================================================
+   INITIAL LOAD
+   ========================================================= */
 
-// =====================================================
-// INITIAL LOAD
-// =====================================================
-
-async function init(){
+async function init() {
 
     const subjects =
-        await api(
-            "/api/subjects"
-        );
+        await api("/api/subjects");
 
 
     const select =
@@ -62,17 +103,26 @@ async function init(){
         );
 
 
-    select.innerHTML =
-        subjects.subjects
-        .map(
-            s =>
-            `<option>${s}</option>`
-        )
-        .join("");
+    if (
+        subjects.subjects &&
+        subjects.subjects.length
+    ) {
+
+        select.innerHTML =
+            subjects.subjects
+            .map(
+                s =>
+                `<option value="${s}">
+                    ${s}
+                </option>`
+            )
+            .join("");
+
+    }
 
 
     currentSubject =
-        select.value;
+        select.value || "Python";
 
 
     await refreshDashboard();
@@ -86,46 +136,49 @@ async function init(){
 }
 
 
-
 init();
 
 
+/* =========================================================
+   START STUDENT
+   ========================================================= */
 
-// =====================================================
-// START STUDENT
-// =====================================================
+async function startStudent() {
 
-async function startStudent(){
+    const input =
+        document.getElementById(
+            "nameInput"
+        );
+
 
     const name =
-        document
-        .getElementById(
-            "nameInput"
-        )
-        .value
-        .trim();
+        input.value.trim();
 
 
-    if(!name){
+    if (!name) {
 
         showToast(
-            "Please enter your name"
+            "Please enter your name 🚀"
         );
 
         return;
+
     }
 
 
     const result =
         await post(
+
             "/api/start",
+
             {
-                name:name
+                name: name
             }
+
         );
 
 
-    if(result.success){
+    if (result.success) {
 
         document
         .getElementById(
@@ -144,7 +197,7 @@ async function startStudent(){
 
 
         showToast(
-            "Welcome to EduNova 🚀"
+            "Welcome to EduNova! 🎮"
         );
 
 
@@ -161,12 +214,11 @@ async function startStudent(){
 }
 
 
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
 
-// =====================================================
-// DASHBOARD
-// =====================================================
-
-async function refreshDashboard(){
+async function refreshDashboard() {
 
     const data =
         await api(
@@ -174,12 +226,15 @@ async function refreshDashboard(){
         );
 
 
+    if (!data) return;
+
+
     document
     .getElementById(
         "profileName"
     )
     .textContent =
-    data.name;
+    data.name || "Student";
 
 
     document
@@ -187,7 +242,7 @@ async function refreshDashboard(){
         "level"
     )
     .textContent =
-    data.level;
+    data.level || 1;
 
 
     document
@@ -195,7 +250,7 @@ async function refreshDashboard(){
         "totalXP"
     )
     .textContent =
-    data.xp;
+    data.xp || 0;
 
 
     document
@@ -203,7 +258,7 @@ async function refreshDashboard(){
         "xpNow"
     )
     .textContent =
-    data.xp + " XP";
+    `${data.xp || 0} XP`;
 
 
     document
@@ -211,17 +266,20 @@ async function refreshDashboard(){
         "xpNext"
     )
     .textContent =
-    data.next_xp + " XP";
+    `${data.next_xp || 250} XP`;
 
 
-    let previous =
-        (data.level - 1)
-        * 250;
+    const level =
+        Number(data.level || 1);
+
+
+    const previous =
+        (level - 1) * 250;
 
 
     let percent =
         (
-            (data.xp - previous)
+            ((data.xp || 0) - previous)
             / 250
         ) * 100;
 
@@ -250,10 +308,12 @@ async function refreshDashboard(){
     )
     .textContent =
     `Earn ${
-        data.next_xp - data.xp
+        (data.next_xp || 250) -
+        (data.xp || 0)
     } XP to unlock Level ${
-        data.level + 1
+        level + 1
     }.`;
+
 
 
     document
@@ -262,23 +322,22 @@ async function refreshDashboard(){
     )
     .textContent =
     `You're on a ${
-        data.streak
-    } day streak!`;
+        data.streak || 0
+    } day streak! 🔥`;
 
 
     updateStreak(
-        data.streak
+        data.streak || 0
     );
 
 }
 
 
+/* =========================================================
+   STREAK
+   ========================================================= */
 
-// =====================================================
-// STREAK
-// =====================================================
-
-function updateStreak(streak){
+function updateStreak(streak) {
 
     const days =
         document.querySelectorAll(
@@ -287,22 +346,24 @@ function updateStreak(streak){
 
 
     days.forEach(
-        (day,index)=>{
+        (day, index) => {
 
-            if(
+            if (
                 index >=
                 7 - streak
-            ){
+            ) {
 
-                day.classList
-                .add("active");
+                day.classList.add(
+                    "active"
+                );
 
             }
 
-            else{
+            else {
 
-                day.classList
-                .remove("active");
+                day.classList.remove(
+                    "active"
+                );
 
             }
 
@@ -312,10 +373,9 @@ function updateStreak(streak){
 }
 
 
-
-// =====================================================
-// SUBJECT
-// =====================================================
+/* =========================================================
+   SUBJECT CHANGE
+   ========================================================= */
 
 document
 .getElementById(
@@ -323,21 +383,24 @@ document
 )
 .addEventListener(
     "change",
-    function(){
+    function () {
 
         currentSubject =
-        this.value;
+            this.value;
+
+        showToast(
+            `${currentSubject} selected 📚`
+        );
 
     }
 );
 
 
+/* =========================================================
+   DAILY CHALLENGE
+   ========================================================= */
 
-// =====================================================
-// DAILY CHALLENGE
-// =====================================================
-
-async function loadDaily(){
+async function loadDaily() {
 
     const data =
         await api(
@@ -345,12 +408,15 @@ async function loadDaily(){
         );
 
 
+    if (!data) return;
+
+
     document
     .getElementById(
         "dailyTitle"
     )
     .textContent =
-    data.title;
+    data.title || "Daily Challenge";
 
 
     document
@@ -359,9 +425,9 @@ async function loadDaily(){
     )
     .textContent =
     `Complete ${
-        data.subject
+        data.subject || currentSubject
     } challenge and earn ${
-        data.xp
+        data.xp || 100
     } XP.`;
 
 
@@ -376,46 +442,45 @@ async function loadDaily(){
 
 
     const button =
-        document
-        .getElementById(
+        document.getElementById(
             "dailyButton"
         );
 
 
-    if(data.completed){
+    if (data.completed) {
 
-        button.disabled =
-        true;
+        button.disabled = true;
 
         button.textContent =
-        "Completed ✓";
+            "Completed ✓";
 
     }
 
-    else{
+    else {
 
-        button.disabled =
-        false;
+        button.disabled = false;
 
         button.textContent =
-        "Complete Challenge";
+            "Complete Challenge";
 
     }
 
 }
 
 
+/* =========================================================
+   START DAILY
+   ========================================================= */
 
-// =====================================================
-// START DAILY
-// =====================================================
-
-async function startDaily(){
+async function startDaily() {
 
     const data =
         await api(
             "/api/daily"
         );
+
+
+    if (!data) return;
 
 
     currentSubject =
@@ -430,19 +495,16 @@ async function startDaily(){
     data.subject;
 
 
-    openArena(
-        "quiz"
-    );
+    openArena("quiz");
 
 }
 
 
+/* =========================================================
+   LEADERBOARD
+   ========================================================= */
 
-// =====================================================
-// LEADERBOARD
-// =====================================================
-
-async function loadLeaderboard(){
+async function loadLeaderboard() {
 
     const data =
         await api(
@@ -451,10 +513,19 @@ async function loadLeaderboard(){
 
 
     const box =
-        document
-        .getElementById(
+        document.getElementById(
             "leaderboard"
         );
+
+
+    if (!Array.isArray(data)) {
+
+        box.innerHTML =
+            "No leaderboard data.";
+
+        return;
+
+    }
 
 
     box.innerHTML =
@@ -464,11 +535,7 @@ async function loadLeaderboard(){
 
             <div class="
                 rank
-                ${
-                    student.you
-                    ? "you"
-                    : ""
-                }
+                ${student.you ? "you" : ""}
             ">
 
                 <b>
@@ -480,27 +547,17 @@ async function loadLeaderboard(){
                     ? "🥈"
                     : student.rank === 3
                     ? "🥉"
-                    : "#" +
-                      student.rank
+                    : "#" + student.rank
                 }
 
                 </b>
 
-
                 <span>
-
-                👤
-
-                ${student.name}
-
+                    👤 ${student.name}
                 </span>
 
-
                 <strong>
-
-                ${student.xp}
-                XP
-
+                    ${student.xp} XP
                 </strong>
 
             </div>
@@ -512,12 +569,11 @@ async function loadLeaderboard(){
 }
 
 
+/* =========================================================
+   ACTIVITY
+   ========================================================= */
 
-// =====================================================
-// ACTIVITY
-// =====================================================
-
-async function loadActivity(){
+async function loadActivity() {
 
     const data =
         await api(
@@ -526,16 +582,18 @@ async function loadActivity(){
 
 
     const box =
-        document
-        .getElementById(
+        document.getElementById(
             "activity"
         );
 
 
-    if(data.length === 0){
+    if (
+        !Array.isArray(data) ||
+        data.length === 0
+    ) {
 
         box.innerHTML =
-        "No activity yet.";
+            "No activity yet.";
 
         return;
 
@@ -547,41 +605,31 @@ async function loadActivity(){
         .map(
             item => `
 
-            <div
-            class="activity-row"
-            >
+            <div class="activity-row">
 
                 <div>
 
                     <b>
-                    ${
-                        item.subject
-                    }
-                    Quiz
+                        ${item.subject}
+                        Quiz
                     </b>
 
                     <small>
 
-                    ${
-                        item.score
-                    } /
-                    ${
-                        item.total
-                    }
-                    correct
+                        ${item.score}
+                        /
+                        ${item.total}
+                        correct
 
-                    •
-                    ${
-                        item.percentage
-                    }%
+                        •
+                        ${item.percentage}%
 
                     </small>
 
                 </div>
 
-
                 <strong>
-                +XP
+                    +XP
                 </strong>
 
             </div>
@@ -593,48 +641,52 @@ async function loadActivity(){
 }
 
 
+/* =========================================================
+   OPEN ARENA
+   ========================================================= */
 
-// =====================================================
-// ARENA
-// =====================================================
-
-function openArena(mode){
+function openArena(mode) {
 
     const arena =
-        document
-        .getElementById(
+        document.getElementById(
             "arena"
         );
 
 
-    arena.classList
-    .remove("hidden");
+    arena.classList.remove(
+        "hidden"
+    );
 
 
     arena.scrollIntoView({
-        behavior:"smooth"
+        behavior: "smooth"
     });
 
 
-    if(mode === "quiz"){
+    clearInterval(bombTimer);
+
+    clearInterval(visualTimer);
+
+
+    if (mode === "quiz") {
 
         startQuiz();
 
     }
 
-    else if(mode === "visual"){
+    else if (mode === "visual") {
 
         startVisual();
 
     }
 
-    else if(mode === "debug"){
+    else if (mode === "debug") {
 
         startDebug();
 
     }
 
-    else if(mode === "bomb"){
+    else if (mode === "bomb") {
 
         startBomb();
 
@@ -643,12 +695,11 @@ function openArena(mode){
 }
 
 
+/* =========================================================
+   QUIZ
+   ========================================================= */
 
-// =====================================================
-// QUIZ
-// =====================================================
-
-async function startQuiz(){
+async function startQuiz() {
 
     document
     .getElementById(
@@ -658,6 +709,15 @@ async function startQuiz(){
     "🧠 Quiz Arena";
 
 
+    document
+    .getElementById(
+        "arenaSubtitle"
+    )
+    .textContent =
+    `${currentSubject} • Test your knowledge`;
+
+
+
     const level =
         Number(
             document
@@ -665,17 +725,53 @@ async function startQuiz(){
                 "level"
             )
             .textContent
-        );
+        ) || 1;
 
 
     const data =
         await api(
+
             `/api/questions?subject=${
                 encodeURIComponent(
                     currentSubject
                 )
             }&level=${level}`
+
         );
+
+
+    if (
+        !data.questions ||
+        data.questions.length === 0
+    ) {
+
+        document
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
+
+            <div class="meme">
+
+                <div class="emoji">
+                    📚
+                </div>
+
+                <h3>
+                    No questions available
+                </h3>
+
+                <p>
+                    Try another BCA topic.
+                </p>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
 
 
     quiz =
@@ -691,13 +787,16 @@ async function startQuiz(){
 }
 
 
+/* =========================================================
+   DRAW QUESTION
+   ========================================================= */
 
-function drawQuestion(){
+function drawQuestion() {
 
-    if(
+    if (
         questionIndex >=
         quiz.length
-    ){
+    ) {
 
         finishQuiz();
 
@@ -715,72 +814,88 @@ function drawQuestion(){
         ];
 
 
-    document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
-
-    <div class="question">
-
-        Question ${
-            questionIndex + 1
-        }
-        /
-        ${quiz.length}
-
-        <br><br>
-
-        ${q.question}
-
-    </div>
+    const box =
+        document.getElementById(
+            "arenaContent"
+        );
 
 
-    <div class="options">
+    box.innerHTML = `
 
-        ${
+        <!-- REACTION WILL APPEAR HERE -->
+        <div
+            id="reaction"
+            class="reaction-top"
+        ></div>
 
-            q.options
-            .map(
-                (option,index)=>
 
-                `
+        <div class="question">
 
-                <button
-                class="option"
-                onclick="
-                answerQuestion(
-                    ${index}
+            <div class="question-number">
+
+                QUESTION
+                ${questionIndex + 1}
+                /
+                ${quiz.length}
+
+            </div>
+
+            <div class="question-text">
+
+                ${q.question}
+
+            </div>
+
+        </div>
+
+
+        <div class="options">
+
+            ${
+                q.options
+                .map(
+                    (option, index) => `
+
+                    <button
+                        class="option"
+                        onclick="
+                            answerQuestion(
+                                ${index}
+                            )
+                        "
+                    >
+
+                        <span class="option-letter">
+                            ${
+                                String.fromCharCode(
+                                    65 + index
+                                )
+                            }
+                        </span>
+
+                        ${option}
+
+                    </button>
+
+                    `
                 )
-                "
-                >
+                .join("")
+            }
 
-                ${option}
-
-                </button>
-
-                `
-            )
-            .join("")
-
-        }
-
-    </div>
-
-
-    <div id="reaction">
-
-    </div>
+        </div>
 
     `;
 
 }
 
 
+/* =========================================================
+   ANSWER QUESTION
+   ========================================================= */
 
-function answerQuestion(index){
+function answerQuestion(index) {
 
-    if(answered)
+    if (answered)
         return;
 
 
@@ -794,38 +909,34 @@ function answerQuestion(index){
 
 
     const options =
-        document
-        .querySelectorAll(
+        document.querySelectorAll(
             ".option"
         );
 
 
     options.forEach(
-        (button,i)=>{
+        (button, i) => {
 
-            button.disabled =
-            true;
+            button.disabled = true;
 
 
-            if(
+            if (
                 i === q.answer
-            ){
+            ) {
 
-                button.classList
-                .add(
+                button.classList.add(
                     "correct"
                 );
 
             }
 
 
-            if(
+            if (
                 i === index &&
                 i !== q.answer
-            ){
+            ) {
 
-                button.classList
-                .add(
+                button.classList.add(
                     "wrong"
                 );
 
@@ -835,55 +946,47 @@ function answerQuestion(index){
     );
 
 
-    if(
+    if (
         index ===
         q.answer
-    ){
+    ) {
 
         score++;
 
-
         successSound();
 
-
-        showMeme(
-            true
-        );
+        showMeme(true);
 
     }
 
-    else{
+    else {
 
         wrongSound();
 
-
-        showMeme(
-            false
-        );
+        showMeme(false);
 
     }
 
 
     setTimeout(
-        ()=>{
+        () => {
 
             questionIndex++;
 
             drawQuestion();
 
         },
-        1200
+        1800
     );
 
 }
 
 
+/* =========================================================
+   QUIZ FINISH
+   ========================================================= */
 
-// =====================================================
-// QUIZ FINISH
-// =====================================================
-
-async function finishQuiz(){
+async function finishQuiz() {
 
     const result =
         await post(
@@ -891,22 +994,20 @@ async function finishQuiz(){
             {
 
                 subject:
-                currentSubject,
+                    currentSubject,
 
                 score:
-                score,
+                    score,
 
                 total:
-                quiz.length,
+                    quiz.length,
 
                 mode:
-                "quiz"
+                    "quiz"
 
             }
         );
 
-
-    // Daily Challenge
 
     const daily =
         await api(
@@ -914,25 +1015,29 @@ async function finishQuiz(){
         );
 
 
-    if(
+    if (
         !daily.completed &&
         daily.subject ===
         currentSubject &&
         score >=
         Math.ceil(
-            quiz.length * .6
+            quiz.length * 0.6
         )
-    ){
+    ) {
 
         await post(
             "/api/daily/complete",
             {
                 challenge_id:
-                daily.id
+                    daily.id
             }
         );
 
     }
+
+
+    const percentage =
+        result.percentage || 0;
 
 
     document
@@ -941,44 +1046,37 @@ async function finishQuiz(){
     )
     .innerHTML = `
 
-    <div class="meme">
+        <div class="meme">
 
-        <div class="emoji">
-        🏆🎉
+            <div class="emoji">
+                🏆🎉🚀
+            </div>
+
+            <h2>
+                Quiz Complete!
+            </h2>
+
+            <p>
+                ${score}
+                /
+                ${quiz.length}
+                correct
+            </p>
+
+            <p>
+                Score:
+                ${percentage}%
+            </p>
+
+            <br>
+
+            <button
+                onclick="startQuiz()"
+            >
+                🔄 Play Again
+            </button>
+
         </div>
-
-        <h2>
-        Quiz Complete!
-        </h2>
-
-        <p>
-
-        ${score}
-        /
-        ${quiz.length}
-        correct
-
-        </p>
-
-        <p>
-
-        ${result.percentage}%
-
-        </p>
-
-        <br>
-
-        <button
-        onclick="
-        startQuiz()
-        "
-        >
-
-        Play Again
-
-        </button>
-
-    </div>
 
     `;
 
@@ -991,41 +1089,90 @@ async function finishQuiz(){
 
     await loadActivity();
 
-
     confetti();
 
 }
 
 
+/* =========================================================
+   MEME SYSTEM
+   ========================================================= */
 
-// =====================================================
-// FUNNY MEMES
-// =====================================================
-
-function showMeme(correct){
+function showMeme(correct) {
 
     const box =
-        document
-        .getElementById(
+        document.getElementById(
             "reaction"
         );
 
 
-    if(correct){
+    if (!box) return;
+
+
+    const correctMemes = [
+
+        "/static/memes/correct1.jpg",
+
+        "/static/memes/correct2.jpg",
+
+        "/static/memes/correct3.jpg"
+
+    ];
+
+
+    const wrongMemes = [
+
+        "/static/memes/wrong1.jpg",
+
+        "/static/memes/wrong2.jpg",
+
+        "/static/memes/wrong3.jpg"
+
+    ];
+
+
+    const memes =
+        correct
+        ? correctMemes
+        : wrongMemes;
+
+
+    const randomMeme =
+        memes[
+            Math.floor(
+                Math.random()
+                * memes.length
+            )
+        ];
+
+
+    if (correct) {
 
         box.innerHTML = `
 
-        <div class="meme">
+            <div class="
+                meme
+                reaction-meme-box
+                correct-meme
+            ">
 
-            <div class="emoji">
-            😎🧠✨
+                <img
+                    src="${randomMeme}"
+                    alt="Correct Answer Meme"
+                    class="reaction-meme"
+                >
+
+                <b>
+                    🎉 PERFECT!
+                    Brain.exe is working! 🔥
+                </b>
+
+                <p>
+                    Correct answer!
+                    Keep going! 🚀
+                </p>
+
             </div>
-
-            <b>
-            PERFECT! Brain.exe is working! 🔥
-            </b>
-
-        </div>
 
         `;
 
@@ -1033,21 +1180,33 @@ function showMeme(correct){
 
     }
 
-    else{
+    else {
 
         box.innerHTML = `
 
-        <div class="meme">
+            <div class="
+                meme
+                reaction-meme-box
+                wrong-meme
+            ">
 
-            <div class="emoji">
-            🤦‍♀️💻😂
+                <img
+                    src="${randomMeme}"
+                    alt="Wrong Answer Meme"
+                    class="reaction-meme"
+                >
+
+                <b>
+                    😂 FAHHHH!
+                    Not quite!
+                </b>
+
+                <p>
+                    Don't worry —
+                    you'll get the next one! 💪
+                </p>
+
             </div>
-
-            <b>
-            FAHHHH! Bug found in your brain 😂
-            </b>
-
-        </div>
 
         `;
 
@@ -1056,46 +1215,45 @@ function showMeme(correct){
 }
 
 
-
-// =====================================================
-// SOUND
-// =====================================================
+/* =========================================================
+   SOUND
+   ========================================================= */
 
 function sound(
     frequency,
     duration,
     type
-){
+) {
 
-    try{
+    try {
 
         const AudioContext =
-        window.AudioContext ||
-        window.webkitAudioContext;
+            window.AudioContext ||
+            window.webkitAudioContext;
 
 
         const context =
-        new AudioContext();
+            new AudioContext();
 
 
         const oscillator =
-        context.createOscillator();
+            context.createOscillator();
 
 
         const gain =
-        context.createGain();
+            context.createGain();
 
 
         oscillator.type =
-        type;
+            type;
 
 
         oscillator.frequency.value =
-        frequency;
+            frequency;
 
 
         gain.gain.value =
-        0.08;
+            0.08;
 
 
         oscillator.connect(
@@ -1118,7 +1276,7 @@ function sound(
 
     }
 
-    catch(error){
+    catch(error) {
 
         console.log(error);
 
@@ -1127,8 +1285,7 @@ function sound(
 }
 
 
-
-function successSound(){
+function successSound() {
 
     sound(
         880,
@@ -1138,12 +1295,14 @@ function successSound(){
 
 
     setTimeout(
-        ()=>{
+        () => {
+
             sound(
                 1200,
                 .15,
                 "sine"
             );
+
         },
         100
     );
@@ -1151,8 +1310,7 @@ function successSound(){
 }
 
 
-
-function wrongSound(){
+function wrongSound() {
 
     sound(
         150,
@@ -1163,12 +1321,11 @@ function wrongSound(){
 }
 
 
+/* =========================================================
+   VISUAL SIMULATOR
+   ========================================================= */
 
-// =====================================================
-// VISUAL SIMULATOR
-// =====================================================
-
-function startVisual(){
+function startVisual() {
 
     document
     .getElementById(
@@ -1180,297 +1337,1043 @@ function startVisual(){
 
     document
     .getElementById(
+        "arenaSubtitle"
+    )
+    .textContent =
+    `${currentSubject} • Choose what you want to visualize`;
+
+
+    document
+    .getElementById(
         "arenaContent"
     )
     .innerHTML = `
 
-    <div class="meme">
+        <div class="visual-menu">
 
-        <div class="emoji">
-        📦 🔗 🔁 🌳
+            <h3>
+                Choose a Visual Simulation
+            </h3>
+
+            <p>
+                Pick a concept and watch
+                how it works step-by-step.
+            </p>
+
+
+            <div class="visual-choice-grid">
+
+                <button
+                    onclick="visualArray()"
+                >
+                    📦
+                    <span>Array</span>
+                    <small>Index & Storage</small>
+                </button>
+
+
+                <button
+                    onclick="visualLinkedList()"
+                >
+                    🔗
+                    <span>Linked List</span>
+                    <small>Nodes & Links</small>
+                </button>
+
+
+                <button
+                    onclick="visualStack()"
+                >
+                    📚
+                    <span>Stack</span>
+                    <small>LIFO</small>
+                </button>
+
+
+                <button
+                    onclick="visualQueue()"
+                >
+                    🚶
+                    <span>Queue</span>
+                    <small>FIFO</small>
+                </button>
+
+
+                <button
+                    onclick="visualLoop()"
+                >
+                    🔁
+                    <span>Loop</span>
+                    <small>Iteration</small>
+                </button>
+
+
+                <button
+                    onclick="visualTree()"
+                >
+                    🌳
+                    <span>Binary Tree</span>
+                    <small>Nodes</small>
+                </button>
+
+
+                <button
+                    onclick="visualSearch()"
+                >
+                    🔍
+                    <span>Searching</span>
+                    <small>Linear Search</small>
+                </button>
+
+
+                <button
+                    onclick="visualSort()"
+                >
+                    📊
+                    <span>Sorting</span>
+                    <small>Bubble Sort</small>
+                </button>
+
+            </div>
+
         </div>
 
-        <h3>
-        ${currentSubject}
-        Visual Playground
-        </h3>
+    `;
 
-        <p>
-        Array → Linked List →
-        Stack → Queue →
-        Loop → Tree
-        </p>
+}
+
+
+/* =========================================================
+   VISUAL HEADER
+   ========================================================= */
+
+function visualHeader(title, description) {
+
+    return `
+
+        <button
+            onclick="startVisual()"
+        >
+            ← Back to Visuals
+        </button>
+
+        <br><br>
+
+        <div class="question">
+
+            <h3>
+                ${title}
+            </h3>
+
+            <p>
+                ${description}
+            </p>
+
+        </div>
+
+        <br>
+
+    `;
+
+}
+
+
+/* =========================================================
+   ARRAY VISUAL
+   ========================================================= */
+
+function visualArray() {
+
+    visualItems = [
+        10,
+        20,
+        30,
+        40,
+        50
+    ];
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "📦 Array Visualizer",
+            "Elements are stored using indexes."
+        )
+
+        +
+
+        `
+
+        <div
+            id="visualBlocks"
+            class="visual-array"
+        ></div>
 
         <br>
 
         <button
-        onclick="runVisual()"
+            onclick="addArrayElement()"
         >
-
-        ▶ Start Simulation
-
+            ➕ Add Element
         </button>
 
-    </div>
+        <button
+            onclick="removeArrayElement()"
+        >
+            ➖ Remove Last
+        </button>
 
-    `;
+        `;
+
+
+    drawArray();
 
 }
 
 
-
-function runVisual(){
+function drawArray() {
 
     const box =
-        document
-        .getElementById(
-            "arenaContent"
+        document.getElementById(
+            "visualBlocks"
         );
 
 
-    let items = [
-        "10",
-        "20",
-        "30",
-        "40",
-        "50"
-    ];
+    box.innerHTML =
+        visualItems
+        .map(
+            (item, index) => `
 
+                <div
+                    class="visual-node"
+                >
 
-    box.innerHTML = `
+                    <small>
+                        Index ${index}
+                    </small>
 
-    <h3>
-    Array Storage
-    </h3>
+                    <strong>
+                        ${item}
+                    </strong>
 
-    <div
-    id="visualBlocks"
-    class="tool-grid"
-    >
+                </div>
 
-    </div>
-
-    <br>
-
-    <button
-    onclick="addVisualBlock()"
-    >
-
-    Add Element
-
-    </button>
-
-    `;
-
-
-    window.visualItems =
-    items;
-
-
-    drawVisual();
+            `
+        )
+        .join("");
 
 }
 
 
+function addArrayElement() {
 
-function drawVisual(){
-
-    document
-    .getElementById(
-        "visualBlocks"
-    )
-    .innerHTML =
-
-    window.visualItems
-    .map(
-        (item,index)=>
-
-        `
-
-        <div class="card">
-
-        Index ${index}
-
-        <br>
-
-        <b>
-        ${item}
-        </b>
-
-        </div>
-
-        `
-    )
-    .join("");
-
-}
-
-
-
-function addVisualBlock(){
-
-    window.visualItems.push(
+    visualItems.push(
         Math.floor(
-            Math.random()*100
+            Math.random() * 100
         )
     );
 
 
-    drawVisual();
+    drawArray();
 
 }
 
 
+function removeArrayElement() {
 
-// =====================================================
-// DEBUG
-// =====================================================
+    if (
+        visualItems.length
+    ) {
 
-function startDebug(){
+        visualItems.pop();
 
-    document
-    .getElementById(
-        "arenaTitle"
-    )
-    .textContent =
-    "🛠 Debug Arena";
+        drawArray();
+
+    }
+
+}
+
+
+/* =========================================================
+   LINKED LIST
+   ========================================================= */
+
+function visualLinkedList() {
+
+    const nodes = [
+        10,
+        20,
+        30,
+        40
+    ];
 
 
     document
     .getElementById(
         "arenaContent"
     )
-    .innerHTML = `
+    .innerHTML =
 
-    <div class="question">
+        visualHeader(
+            "🔗 Linked List Visualizer",
+            "Each node stores data and a link to the next node."
+        )
 
-    Find the mistake:
+        +
 
-    <pre>
+        `
 
-int a = 10;
+        <div
+            id="linkedNodes"
+            class="linked-list"
+        ></div>
 
-if(a = 10){
+        <br>
 
-    printf("Equal");
+        <button
+            onclick="addLinkedNode()"
+        >
+            ➕ Add Node
+        </button>
 
-}
-
-    </pre>
-
-    </div>
-
-
-    <br>
-
-    <button
-    onclick="debugAnswer(false)"
-    >
-    a = 10
-    </button>
+        `;
 
 
-    <button
-    onclick="debugAnswer(true)"
-    >
-    printf
-    </button>
+    window.linkedNodes =
+        nodes;
 
 
-    <div
-    id="debugResult"
-    >
-    </div>
-
-    `;
+    drawLinkedList();
 
 }
 
 
+function drawLinkedList() {
 
-function debugAnswer(correct){
+    const box =
+        document.getElementById(
+            "linkedNodes"
+        );
 
-    if(correct){
+
+    box.innerHTML =
+        window.linkedNodes
+        .map(
+            (item, index) => `
+
+                <div class="linked-node">
+
+                    <div>
+                        <small>DATA</small>
+                        <strong>
+                            ${item}
+                        </strong>
+                    </div>
+
+                    <span>
+                        ${index <
+                        window.linkedNodes.length - 1
+                        ? "→"
+                        : "→ NULL"}
+                    </span>
+
+                </div>
+
+            `
+        )
+        .join("");
+
+}
+
+
+function addLinkedNode() {
+
+    window.linkedNodes.push(
+        Math.floor(
+            Math.random() * 100
+        )
+    );
+
+
+    drawLinkedList();
+
+}
+
+
+/* =========================================================
+   STACK
+   ========================================================= */
+
+function visualStack() {
+
+    window.stackData = [
+        "A",
+        "B",
+        "C"
+    ];
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "📚 Stack Visualizer",
+            "Stack follows LIFO — Last In, First Out."
+        )
+
+        +
+
+        `
+
+        <div
+            id="stackContainer"
+            class="stack-container"
+        ></div>
+
+        <br>
+
+        <button
+            onclick="pushStack()"
+        >
+            ➕ PUSH
+        </button>
+
+        <button
+            onclick="popStack()"
+        >
+            ➖ POP
+        </button>
+
+        `;
+
+
+    drawStack();
+
+}
+
+
+function drawStack() {
+
+    const box =
+        document.getElementById(
+            "stackContainer"
+        );
+
+
+    box.innerHTML =
+        window.stackData
+        .slice()
+        .reverse()
+        .map(
+            item => `
+
+                <div class="stack-item">
+                    ${item}
+                </div>
+
+            `
+        )
+        .join("");
+
+}
+
+
+function pushStack() {
+
+    window.stackData.push(
+        "X" +
+        Math.floor(
+            Math.random() * 100
+        )
+    );
+
+
+    drawStack();
+
+}
+
+
+function popStack() {
+
+    if (
+        window.stackData.length
+    ) {
+
+        window.stackData.pop();
+
+        drawStack();
+
+    }
+
+}
+
+
+/* =========================================================
+   QUEUE
+   ========================================================= */
+
+function visualQueue() {
+
+    window.queueData = [
+        "A",
+        "B",
+        "C"
+    ];
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "🚶 Queue Visualizer",
+            "Queue follows FIFO — First In, First Out."
+        )
+
+        +
+
+        `
+
+        <div
+            id="queueContainer"
+            class="queue-container"
+        ></div>
+
+        <br>
+
+        <button
+            onclick="enqueue()"
+        >
+            ➕ ENQUEUE
+        </button>
+
+        <button
+            onclick="dequeue()"
+        >
+            ➖ DEQUEUE
+        </button>
+
+        `;
+
+
+    drawQueue();
+
+}
+
+
+function drawQueue() {
+
+    const box =
+        document.getElementById(
+            "queueContainer"
+        );
+
+
+    box.innerHTML =
+        window.queueData
+        .map(
+            item => `
+
+                <div class="queue-item">
+                    ${item}
+                </div>
+
+            `
+        )
+        .join("");
+
+}
+
+
+function enqueue() {
+
+    window.queueData.push(
+        "X" +
+        Math.floor(
+            Math.random() * 100
+        )
+    );
+
+
+    drawQueue();
+
+}
+
+
+function dequeue() {
+
+    if (
+        window.queueData.length
+    ) {
+
+        window.queueData.shift();
+
+        drawQueue();
+
+    }
+
+}
+
+
+/* =========================================================
+   LOOP VISUAL
+   ========================================================= */
+
+function visualLoop() {
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "🔁 Loop Visualizer",
+            "Watch a loop execute one iteration at a time."
+        )
+
+        +
+
+        `
+
+        <div class="loop-box">
+
+            <div
+                id="loopCounter"
+                class="loop-counter"
+            >
+                0
+            </div>
+
+            <p>
+                for (i = 0; i < 10; i++)
+            </p>
+
+            <button
+                onclick="runLoopStep()"
+            >
+                ▶ Next Iteration
+            </button>
+
+        </div>
+
+        `;
+
+
+    window.loopValue = 0;
+
+}
+
+
+function runLoopStep() {
+
+    const counter =
+        document.getElementById(
+            "loopCounter"
+        );
+
+
+    if (
+        window.loopValue >= 10
+    ) {
+
+        counter.textContent =
+            "DONE ✓";
+
+        successSound();
+
+        return;
+
+    }
+
+
+    window.loopValue++;
+
+    counter.textContent =
+        window.loopValue;
+
+}
+
+
+/* =========================================================
+   BINARY TREE
+   ========================================================= */
+
+function visualTree() {
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "🌳 Binary Tree",
+            "A node can have left and right children."
+        )
+
+        +
+
+        `
+
+        <div class="tree">
+
+            <div class="tree-node root">
+                50
+            </div>
+
+            <div class="tree-line">
+                ↙
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                ↘
+            </div>
+
+            <div class="tree-children">
+
+                <div class="tree-node">
+                    30
+                </div>
+
+                <div class="tree-node">
+                    70
+                </div>
+
+            </div>
+
+            <br>
+
+            <div class="tree-children">
+
+                <div class="tree-node">
+                    20
+                </div>
+
+                <div class="tree-node">
+                    40
+                </div>
+
+                <div class="tree-node">
+                    60
+                </div>
+
+                <div class="tree-node">
+                    80
+                </div>
+
+            </div>
+
+        </div>
+
+        `;
+
+}
+
+
+/* =========================================================
+   SEARCH VISUAL
+   ========================================================= */
+
+function visualSearch() {
+
+    window.searchArray = [
+        10,
+        25,
+        40,
+        55,
+        70
+    ];
+
+
+    window.searchIndex = 0;
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "🔍 Linear Search",
+            "The algorithm checks elements one by one."
+        )
+
+        +
+
+        `
+
+        <div
+            id="searchBlocks"
+            class="visual-array"
+        ></div>
+
+        <br>
+
+        <button
+            onclick="searchStep()"
+        >
+            🔎 Check Next
+        </button>
+
+        <p
+            id="searchMessage"
+        >
+            Search for 55
+        </p>
+
+        `;
+
+
+    drawSearch();
+
+}
+
+
+function drawSearch() {
+
+    document
+    .getElementById(
+        "searchBlocks"
+    )
+    .innerHTML =
+        window.searchArray
+        .map(
+            (item, index) => `
+
+                <div
+                    class="visual-node
+                    ${
+                        index ===
+                        window.searchIndex
+                        ? "highlight"
+                        : ""
+                    }"
+                >
+
+                    ${item}
+
+                </div>
+
+            `
+        )
+        .join("");
+
+}
+
+
+function searchStep() {
+
+    const target = 55;
+
+    if (
+        window.searchIndex >=
+        window.searchArray.length
+    ) {
+
+        return;
+
+    }
+
+
+    const current =
+        window.searchArray[
+            window.searchIndex
+        ];
+
+
+    const message =
+        document.getElementById(
+            "searchMessage"
+        );
+
+
+    if (
+        current === target
+    ) {
+
+        message.textContent =
+            `🎯 Found ${target}!`;
 
         successSound();
 
         confetti();
 
-        document
-        .getElementById(
-            "debugResult"
-        )
-        .innerHTML = `
-
-        <div class="meme">
-
-        😎🔥
-
-        <br>
-
-        Correct!
-
-        <br>
-
-        Use
-
-        <b>
-        a == 10
-        </b>
-
-        for comparison.
-
-        </div>
-
-        `;
+        return;
 
     }
 
-    else{
 
-        wrongSound();
+    message.textContent =
+        `Checking ${current}...`;
 
-        document
-        .getElementById(
-            "debugResult"
+
+    window.searchIndex++;
+
+    drawSearch();
+
+}
+
+
+/* =========================================================
+   BUBBLE SORT
+   ========================================================= */
+
+function visualSort() {
+
+    window.sortArray = [
+        50,
+        20,
+        40,
+        10,
+        30
+    ];
+
+
+    window.sortIndex = 0;
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML =
+
+        visualHeader(
+            "📊 Bubble Sort",
+            "Compare neighbouring elements and swap them when needed."
         )
-        .innerHTML = `
 
-        <div class="meme">
+        +
 
-        🤦‍♀️
+        `
+
+        <div
+            id="sortBlocks"
+            class="visual-array"
+        ></div>
 
         <br>
 
-        Nope!
-
-        </div>
+        <button
+            onclick="sortStep()"
+        >
+            ▶ Next Sort Step
+        </button>
 
         `;
+
+
+    drawSort();
+
+}
+
+
+function drawSort() {
+
+    document
+    .getElementById(
+        "sortBlocks"
+    )
+    .innerHTML =
+        window.sortArray
+        .map(
+            (item, index) => `
+
+                <div class="visual-node">
+                    ${item}
+                </div>
+
+            `
+        )
+        .join("");
+
+}
+
+
+function sortStep() {
+
+    let swapped = false;
+
+
+    for (
+        let i = 0;
+        i < window.sortArray.length - 1;
+        i++
+    ) {
+
+        if (
+            window.sortArray[i]
+            >
+            window.sortArray[i + 1]
+        ) {
+
+            const temp =
+                window.sortArray[i];
+
+            window.sortArray[i] =
+                window.sortArray[i + 1];
+
+            window.sortArray[i + 1] =
+                temp;
+
+            swapped = true;
+
+            break;
+
+        }
+
+    }
+
+
+    drawSort();
+
+
+    if (!swapped) {
+
+        showToast(
+            "Array sorted! 🎉"
+        );
+
+        successSound();
 
     }
 
 }
 
 
+/* =========================================================
+   DEBUG ARENA
+   ========================================================= */
 
-// =====================================================
-// BOMB MODE
-// =====================================================
+async function startDebug() {
 
-let bombTimer;
+    clearInterval(bombTimer);
 
-let bombSeconds;
-
-
-function startBomb(){
 
     document
     .getElementById(
         "arenaTitle"
     )
     .textContent =
-    "💣 Bomb Defusal Mode";
+    "🛠 Debugging Arena";
+
+
+    document
+    .getElementById(
+        "arenaSubtitle"
+    )
+    .textContent =
+    `${currentSubject} • Find the bug`;
+
 
 
     const level =
@@ -1480,12 +2383,503 @@ function startBomb(){
                 "level"
             )
             .textContent
+        ) || 1;
+
+
+    const data =
+        await api(
+
+            `/api/debug?subject=${
+                encodeURIComponent(
+                    currentSubject
+                )
+            }&level=${level}`
+
         );
+
+
+    if (
+        data.questions &&
+        data.questions.length
+    ) {
+
+        debugQuestions =
+            data.questions;
+
+    }
+
+    else {
+
+        debugQuestions =
+            getFallbackDebugQuestions(
+                currentSubject
+            );
+
+    }
+
+
+    debugIndex = 0;
+
+    debugScore = 0;
+
+    drawDebugQuestion();
+
+}
+
+
+/* =========================================================
+   FALLBACK DEBUG QUESTIONS
+   ========================================================= */
+
+function getFallbackDebugQuestions(subject) {
+
+    return [
+
+        {
+
+            question:
+            "Find the mistake in this code.",
+
+            code:
+`int a = 10;
+
+if(a = 10){
+
+    printf("Equal");
+
+}`,
+
+            options: [
+                "a = 10",
+                "printf",
+                "int a"
+            ],
+
+            answer: 0,
+
+            explanation:
+            "Use == for comparison: if(a == 10)"
+
+        },
+
+
+        {
+
+            question:
+            "Find the mistake in this loop.",
+
+            code:
+`for(int i = 0; i < 10; i--){
+
+    printf("%d", i);
+
+}`,
+
+            options: [
+                "i--",
+                "printf",
+                "int i"
+            ],
+
+            answer: 0,
+
+            explanation:
+            "i-- moves away from 10. Use i++."
+
+        },
+
+
+        {
+
+            question:
+            "Find the mistake.",
+
+            code:
+`int arr[3];
+
+arr[3] = 50;`,
+
+            options: [
+                "arr[3]",
+                "int arr[3]",
+                "50"
+            ],
+
+            answer: 0,
+
+            explanation:
+            "Valid indexes are 0, 1 and 2."
+
+        }
+
+    ];
+
+}
+
+
+/* =========================================================
+   DRAW DEBUG
+   ========================================================= */
+
+function drawDebugQuestion() {
+
+    if (
+        debugIndex >=
+        debugQuestions.length
+    ) {
+
+        finishDebug();
+
+        return;
+
+    }
+
+
+    const q =
+        debugQuestions[
+            debugIndex
+        ];
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML = `
+
+        <div class="question">
+
+            <div class="question-number">
+
+                DEBUG
+                ${debugIndex + 1}
+                /
+                ${debugQuestions.length}
+
+            </div>
+
+            <div class="question-text">
+                ${q.question}
+            </div>
+
+        </div>
+
+
+        <div class="debug-code">
+
+            <pre>${escapeHTML(
+                q.code
+            )}</pre>
+
+        </div>
+
+
+        <p class="debug-hint">
+
+            🕵️ Click the part you think is wrong:
+
+        </p>
+
+
+        <div class="debug-options">
+
+            ${
+                q.options
+                .map(
+                    (option, index) => `
+
+                    <button
+                        class="debug-option"
+                        onclick="
+                            debugAnswer(
+                                ${index}
+                            )
+                        "
+                    >
+
+                        ❌
+                        ${escapeHTML(
+                            option
+                        )}
+
+                    </button>
+
+                    `
+                )
+                .join("")
+            }
+
+        </div>
+
+
+        <div
+            id="debugResult"
+        ></div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   DEBUG ANSWER
+   ========================================================= */
+
+function debugAnswer(index) {
+
+    const q =
+        debugQuestions[
+            debugIndex
+        ];
+
+
+    const buttons =
+        document.querySelectorAll(
+            ".debug-option"
+        );
+
+
+    buttons.forEach(
+        button =>
+        button.disabled = true
+    );
+
+
+    if (
+        index === q.answer
+    ) {
+
+        debugScore++;
+
+        buttons[index]
+        .classList.add(
+            "correct"
+        );
+
+
+        successSound();
+
+        confetti();
+
+
+        document
+        .getElementById(
+            "debugResult"
+        )
+        .innerHTML = `
+
+            <div class="meme">
+
+                <div class="emoji">
+                    🐛🔨😎
+                </div>
+
+                <b>
+                    BUG DESTROYED! 🔥
+                </b>
+
+                <p>
+                    ${escapeHTML(
+                        q.explanation ||
+                        "Correct!"
+                    )}
+                </p>
+
+            </div>
+
+        `;
+
+    }
+
+    else {
+
+        buttons[index]
+        .classList.add(
+            "wrong"
+        );
+
+
+        buttons[q.answer]
+        .classList.add(
+            "correct"
+        );
+
+
+        wrongSound();
+
+
+        document
+        .getElementById(
+            "debugResult"
+        )
+        .innerHTML = `
+
+            <div class="meme">
+
+                <div class="emoji">
+                    🤦‍♀️💻
+                </div>
+
+                <b>
+                    FAHHHH! Wrong bug! 😂
+                </b>
+
+                <p>
+                    Correct answer:
+                    ${escapeHTML(
+                        q.options[q.answer]
+                    )}
+                </p>
+
+            </div>
+
+        `;
+
+    }
+
+
+    setTimeout(
+        () => {
+
+            debugIndex++;
+
+            drawDebugQuestion();
+
+        },
+        1800
+    );
+
+}
+
+
+/* =========================================================
+   DEBUG FINISH
+   ========================================================= */
+
+async function finishDebug() {
+
+    successSound();
+
+
+    document
+    .getElementById(
+        "arenaContent"
+    )
+    .innerHTML = `
+
+        <div class="meme">
+
+            <div class="emoji">
+                🛠️🏆🎉
+            </div>
+
+            <h2>
+                Debugging Complete!
+            </h2>
+
+            <p>
+                You destroyed
+                ${debugScore}
+                /
+                ${debugQuestions.length}
+                bugs.
+            </p>
+
+            <br>
+
+            <button
+                onclick="startDebug()"
+            >
+                🔄 Debug Again
+            </button>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   BOMB MODE
+   ========================================================= */
+
+async function startBomb() {
+
+    clearInterval(bombTimer);
+
+
+    document
+    .getElementById(
+        "arenaTitle"
+    )
+    .textContent =
+    "💣 Bomb Defusal Mode";
+
+
+    document
+    .getElementById(
+        "arenaSubtitle"
+    )
+    .textContent =
+    `${currentSubject} • Defuse before time runs out`;
+
+
+
+    const level =
+        Number(
+            document
+            .getElementById(
+                "level"
+            )
+            .textContent
+        ) || 1;
+
+
+    const data =
+        await api(
+
+            `/api/questions?subject=${
+                encodeURIComponent(
+                    currentSubject
+                )
+            }&level=${level}`
+
+        );
+
+
+    let questions =
+        data.questions || [];
+
+
+    if (
+        questions.length === 0
+    ) {
+
+        questions =
+            getFallbackBombQuestions(
+                currentSubject
+            );
+
+    }
+
+
+    const randomQuestion =
+        questions[
+            Math.floor(
+                Math.random()
+                * questions.length
+            )
+        ];
+
+
+    window.currentBombQuestion =
+        randomQuestion;
 
 
     bombSeconds =
         Math.max(
-            15,
+            10,
             35 - level * 2
         );
 
@@ -1496,162 +2890,200 @@ function startBomb(){
     )
     .innerHTML = `
 
-    <div
-    class="meme"
-    >
+        <div class="bomb-wrapper">
 
-        <div
-        class="emoji"
-        >
-        💣
+            <div class="bomb-header">
+
+                <span>
+                    💣 BOMB MODE
+                </span>
+
+                <strong
+                    id="bombTimer"
+                >
+                    ${bombSeconds}
+                </strong>
+
+            </div>
+
+
+            <div class="bomb-body">
+
+                <div class="bomb-icon">
+                    💣
+                </div>
+
+                <div class="question">
+
+                    <div class="question-number">
+                        DEFUSE QUESTION
+                    </div>
+
+                    <div class="question-text">
+                        ${randomQuestion.question}
+                    </div>
+
+                </div>
+
+
+                <div class="bomb-options">
+
+                    ${
+                        randomQuestion.options
+                        .map(
+                            (option, index) => `
+
+                            <button
+                                onclick="
+                                    checkBomb(
+                                        ${index}
+                                    )
+                                "
+                            >
+                                ${escapeHTML(
+                                    option
+                                )}
+                            </button>
+
+                            `
+                        )
+                        .join("")
+                    }
+
+                </div>
+
+
+                <div
+                    id="bombResult"
+                ></div>
+
+            </div>
+
         </div>
-
-
-        <h1
-        id="bombTimer"
-        >
-
-        ${bombSeconds}
-
-        </h1>
-
-
-        <h3>
-        DEFUSE THE QUESTION
-        </h3>
-
-
-        <p>
-
-        What does FIFO mean?
-
-        </p>
-
-
-        <br>
-
-
-        <input
-        id="bombAnswer"
-        placeholder="Type answer"
-        >
-
-
-        <button
-        onclick="checkBomb()"
-        >
-
-        DEFUSE
-
-        </button>
-
-    </div>
 
     `;
 
 
-    clearInterval(
-        bombTimer
-    );
-
-
     bombTimer =
         setInterval(
-            ()=>{
-
-                bombSeconds--;
-
-
-                const timer =
-                    document
-                    .getElementById(
-                        "bombTimer"
-                    );
-
-
-                if(timer)
-                    timer.textContent =
-                    bombSeconds;
-
-
-                if(
-                    bombSeconds <= 0
-                ){
-
-                    clearInterval(
-                        bombTimer
-                    );
-
-
-                    explodeBomb();
-
-                }
-
-            },
+            updateBombTimer,
             1000
         );
 
 }
 
 
+/* =========================================================
+   FALLBACK BOMB QUESTIONS
+   ========================================================= */
 
-function checkBomb(){
+function getFallbackBombQuestions(subject) {
 
-    clearInterval(
-        bombTimer
-    );
+    return [
 
+        {
 
-    const answer =
-        document
-        .getElementById(
-            "bombAnswer"
-        )
-        .value
-        .trim()
-        .toLowerCase();
+            question:
+            "Which data structure follows FIFO?",
 
+            options: [
+                "Stack",
+                "Queue",
+                "Tree",
+                "Graph"
+            ],
 
-    if(
-        answer ===
-        "first in first out"
-        ||
-        answer ===
-        "fifo"
-    ){
+            answer: 1
 
-        successSound();
-
-        confetti();
+        },
 
 
-        document
-        .getElementById(
-            "arenaContent"
-        )
-        .innerHTML = `
+        {
 
-        <div class="meme">
+            question:
+            "Which data structure follows LIFO?",
 
-        🎉💣
+            options: [
+                "Queue",
+                "Stack",
+                "Array",
+                "Graph"
+            ],
 
-        <h2>
-        BOMB DEFUSED!
-        </h2>
+            answer: 1
 
-        <div class="emoji">
-        😎🏆
-        </div>
+        },
 
-        </div>
 
-        `;
+        {
+
+            question:
+            "Which keyword defines a function in Python?",
+
+            options: [
+                "function",
+                "def",
+                "func",
+                "define"
+            ],
+
+            answer: 1
+
+        }
+
+    ];
+
+}
+
+
+/* =========================================================
+   BOMB TIMER
+   ========================================================= */
+
+function updateBombTimer() {
+
+    bombSeconds--;
+
+
+    const timer =
+        document.getElementById(
+            "bombTimer"
+        );
+
+
+    if (!timer) {
+
+        clearInterval(
+            bombTimer
+        );
+
+        return;
 
     }
 
-    else{
 
-        wrongSound();
+    timer.textContent =
+        bombSeconds;
+
+
+    if (
+        bombSeconds <= 5
+    ) {
+
+        timer.classList.add(
+            "timer-danger"
+        );
+
+    }
+
+
+    if (
+        bombSeconds <= 0
+    ) {
+
+        clearInterval(
+            bombTimer
+        );
 
         explodeBomb();
 
@@ -1660,8 +3092,128 @@ function checkBomb(){
 }
 
 
+/* =========================================================
+   CHECK BOMB
+   ========================================================= */
 
-function explodeBomb(){
+function checkBomb(index) {
+
+    if (
+        !window.currentBombQuestion
+    )
+        return;
+
+
+    clearInterval(
+        bombTimer
+    );
+
+
+    const q =
+        window.currentBombQuestion;
+
+
+    const buttons =
+        document.querySelectorAll(
+            ".bomb-options button"
+        );
+
+
+    buttons.forEach(
+        button =>
+        button.disabled = true
+    );
+
+
+    if (
+        index === q.answer
+    ) {
+
+        buttons[index]
+        .classList.add(
+            "correct"
+        );
+
+
+        successSound();
+
+        confetti();
+
+
+        document
+        .getElementById(
+            "bombResult"
+        )
+        .innerHTML = `
+
+            <div class="meme">
+
+                <div class="emoji">
+                    💣😎🎉
+                </div>
+
+                <h2>
+                    BOMB DEFUSED!
+                </h2>
+
+                <p>
+                    Great job!
+                    You saved the mission! 🚀
+                </p>
+
+                <br>
+
+                <button
+                    onclick="startBomb()"
+                >
+                    🔄 Next Bomb
+                </button>
+
+            </div>
+
+        `;
+
+    }
+
+    else {
+
+        buttons[index]
+        .classList.add(
+            "wrong"
+        );
+
+
+        buttons[q.answer]
+        .classList.add(
+            "correct"
+        );
+
+
+        wrongSound();
+
+        setTimeout(
+            explodeBomb,
+            500
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   EXPLODE BOMB
+   ========================================================= */
+
+function explodeBomb() {
+
+    clearInterval(
+        bombTimer
+    );
+
+
+    wrongSound();
+
 
     document
     .getElementById(
@@ -1669,46 +3221,48 @@ function explodeBomb(){
     )
     .innerHTML = `
 
-    <div class="meme">
+        <div class="bomb-explosion">
 
-        <div class="emoji">
-        💥💣🤯
+            <div class="explosion">
+                💥
+            </div>
+
+            <h1>
+                BOOOOOOM! 💣
+            </h1>
+
+            <p>
+                FAHHHH! Time's up! 😂
+            </p>
+
+            <br>
+
+            <button
+                onclick="startBomb()"
+            >
+                🔄 Try Again
+            </button>
+
         </div>
-
-        <h2>
-        FAHHHH!
-        </h2>
-
-        <p>
-        Virtual Bomb Exploded 😂
-        </p>
-
-        <br>
-
-        <button
-        onclick="startBomb()"
-        >
-
-        Try Again
-
-        </button>
-
-    </div>
 
     `;
 
 }
 
 
+/* =========================================================
+   CLOSE ARENA
+   ========================================================= */
 
-// =====================================================
-// CLOSE
-// =====================================================
-
-function closeArena(){
+function closeArena() {
 
     clearInterval(
         bombTimer
+    );
+
+
+    clearInterval(
+        visualTimer
     );
 
 
@@ -1716,69 +3270,112 @@ function closeArena(){
     .getElementById(
         "arena"
     )
-    .classList
-    .add(
+    .classList.add(
         "hidden"
     );
 
 }
 
 
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
 
-// =====================================================
-// CONFETTI
-// =====================================================
+function escapeHTML(value) {
 
-function confetti(){
+    if (
+        value === undefined ||
+        value === null
+    ) {
 
-    for(
-        let i=0;
-        i<30;
+        return "";
+
+    }
+
+
+    return String(value)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/* =========================================================
+   CONFETTI
+   ========================================================= */
+/* =========================================================
+   CONFETTI
+   ========================================================= */
+
+function confetti() {
+
+    for (
+        let i = 0;
+        i < 35;
         i++
-    ){
+    ) {
 
         const piece =
-            document.createElement(
-                "div"
-            );
+            document.createElement("div");
 
 
         piece.style.position =
-        "fixed";
+            "fixed";
 
 
         piece.style.left =
-        Math.random()*100
-        + "%";
+            Math.random() * 100 + "%";
 
 
         piece.style.top =
-        "-10px";
+            "-10px";
 
 
         piece.style.width =
-        "8px";
+            "8px";
 
 
         piece.style.height =
-        "12px";
+            "12px";
 
 
         piece.style.background =
-        "#"+Math.floor(
-            Math.random()*16777215
-        ).toString(16);
+            "#"
+            +
+            Math.floor(
+                Math.random() * 16777215
+            ).toString(16);
 
 
         piece.style.zIndex =
-        "9999";
+            "9999";
+
+
+        piece.style.borderRadius =
+            "3px";
 
 
         document
-        .body
-        .appendChild(
-            piece
-        );
+            .body
+            .appendChild(piece);
 
 
         let top = 0;
@@ -1786,19 +3383,25 @@ function confetti(){
 
         const timer =
             setInterval(
-                ()=>{
+                () => {
 
                     top += 5;
 
+
                     piece.style.top =
-                    top+"px";
+                        top + "px";
 
 
-                    if(top > window.innerHeight){
+                    piece.style.transform =
+                        `rotate(${top * 4}deg)`;
 
-                        clearInterval(
-                            timer
-                        );
+
+                    if (
+                        top >
+                        window.innerHeight
+                    ) {
+
+                        clearInterval(timer);
 
                         piece.remove();
 
@@ -1810,37 +3413,526 @@ function confetti(){
 
     }
 
-}
+}   // ⭐ CONFETTI এখানেই CLOSE হবে
 
 
 
-// =====================================================
-// TOAST
-// =====================================================
+/* =========================================================
+   TOAST
+   ========================================================= */
 
-function showToast(message){
+function showToast(message) {
 
     const toast =
-        document
-        .getElementById(
-            "toast"
-        );
+        document.getElementById("toast");
+
+
+    if (!toast) return;
 
 
     toast.textContent =
-    message;
+        message;
 
 
     toast.style.display =
-    "block";
+        "block";
 
 
     setTimeout(
-        ()=>{
+        () => {
+
             toast.style.display =
-            "none";
+                "none";
+
         },
         2500
     );
 
 }
+
+
+
+/* =========================================================
+   EARN XP FEATURES
+   ========================================================= */
+
+
+/* =========================================================
+   VISUAL EXPERIMENT
+   ========================================================= */
+
+function earnVisualXP() {
+
+    showToast(
+        "🧪 Visual Experiment opened!"
+    );
+
+
+    if (
+        typeof openArena === "function"
+    ) {
+
+        openArena("visual");
+
+    }
+
+    else {
+
+        showToast(
+            "⚠️ Visual Experiment is not available yet."
+        );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   HELP A STUDENT
+   ========================================================= */
+
+function helpStudent() {
+
+    closeCommunityModal();
+
+
+    const overlay =
+        document.createElement("div");
+
+
+    overlay.className =
+        "share-modal-overlay";
+
+
+    overlay.innerHTML = `
+
+        <div class="share-modal">
+
+            <h2>💬 Help a Student</h2>
+
+            <p class="modal-subtitle">
+                Share your programming knowledge
+                with another learner.
+            </p>
+
+
+            <label for="studentTip">
+                Your Programming Tip
+            </label>
+
+
+            <textarea
+                id="studentTip"
+                placeholder="Example: In Python, == is used to compare two values."
+            ></textarea>
+
+
+            <div class="modal-buttons">
+
+                <button
+                    type="button"
+                    class="modal-cancel"
+                    onclick="closeCommunityModal()"
+                >
+                    Cancel
+                </button>
+
+
+                <button
+                    type="button"
+                    class="modal-submit"
+                    onclick="submitStudentHelp()"
+                >
+                    💬 Share Knowledge
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+}
+
+
+
+/* =========================================================
+   SUBMIT STUDENT HELP
+   ========================================================= */
+
+function submitStudentHelp() {
+
+    const input =
+        document.getElementById("studentTip");
+
+
+    if (!input) return;
+
+
+    const tip =
+        input.value.trim();
+
+
+    if (tip === "") {
+
+        showToast(
+            "⚠️ Please write a programming tip first!"
+        );
+
+        return;
+
+    }
+
+
+    const overlay =
+        document.querySelector(
+            ".share-modal-overlay"
+        );
+
+
+    if (!overlay) return;
+
+
+    overlay.innerHTML = `
+
+        <div class="share-modal">
+
+            <div class="modal-success">
+
+                <div class="success-icon">
+                    💬🎉
+                </div>
+
+
+                <h2>
+                    Knowledge Shared!
+                </h2>
+
+
+                <p>
+                    Your programming tip has been
+                    shared successfully.
+                </p>
+
+
+                <div class="community-note">
+                    ${escapeHTML(tip)}
+                </div>
+
+
+                <br>
+
+
+                <button
+                    type="button"
+                    class="modal-submit"
+                    onclick="closeCommunityModal()"
+                >
+                    Done ✓
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    confetti();
+
+
+    showToast(
+        "💬 You helped a student! +30 XP"
+    );
+
+}
+
+
+
+/* =========================================================
+   SHARE USEFUL NOTES
+   ========================================================= */
+
+function shareNotes() {
+
+    closeCommunityModal();
+
+
+    const overlay =
+        document.createElement("div");
+
+
+    overlay.className =
+        "share-modal-overlay";
+
+
+    overlay.innerHTML = `
+
+        <div class="share-modal">
+
+            <h2>📚 Share Useful Notes</h2>
+
+
+            <p class="modal-subtitle">
+                Share your study notes with
+                the EduNova community.
+            </p>
+
+
+            <label for="noteTitle">
+                Note Title
+            </label>
+
+
+            <input
+                type="text"
+                id="noteTitle"
+                placeholder="Example: Python If-Else Notes"
+            >
+
+
+            <label for="noteContent">
+                Your Notes
+            </label>
+
+
+            <textarea
+                id="noteContent"
+                placeholder="Write your useful study notes here..."
+            ></textarea>
+
+
+            <div class="modal-buttons">
+
+                <button
+                    type="button"
+                    class="modal-cancel"
+                    onclick="closeCommunityModal()"
+                >
+                    Cancel
+                </button>
+
+
+                <button
+                    type="button"
+                    class="modal-submit"
+                    onclick="submitNotes()"
+                >
+                    📚 Share Notes
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(overlay);
+
+}
+
+
+
+/* =========================================================
+   SUBMIT NOTES
+   ========================================================= */
+
+function submitNotes() {
+
+    const titleInput =
+        document.getElementById("noteTitle");
+
+
+    const contentInput =
+        document.getElementById("noteContent");
+
+
+    if (
+        !titleInput ||
+        !contentInput
+    ) {
+
+        return;
+
+    }
+
+
+    const title =
+        titleInput.value.trim();
+
+
+    const content =
+        contentInput.value.trim();
+
+
+    if (title === "") {
+
+        showToast(
+            "⚠️ Please enter a note title!"
+        );
+
+        return;
+
+    }
+
+
+    if (content === "") {
+
+        showToast(
+            "⚠️ Please write your notes!"
+        );
+
+        return;
+
+    }
+
+
+    const overlay =
+        document.querySelector(
+            ".share-modal-overlay"
+        );
+
+
+    if (!overlay) return;
+
+
+    overlay.innerHTML = `
+
+        <div class="share-modal">
+
+            <div class="modal-success">
+
+                <div class="success-icon">
+                    📚🎉
+                </div>
+
+
+                <h2>
+                    Notes Shared!
+                </h2>
+
+
+                <p>
+                    Your notes have been shared
+                    successfully.
+                </p>
+
+
+                <div class="community-note">
+
+                    <strong>
+                        ${escapeHTML(title)}
+                    </strong>
+
+                    <br><br>
+
+                    ${escapeHTML(content)}
+
+                </div>
+
+
+                <br>
+
+
+                <button
+                    type="button"
+                    class="modal-submit"
+                    onclick="closeCommunityModal()"
+                >
+                    Done ✓
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    confetti();
+
+
+    showToast(
+        "📚 Notes shared! +25 XP"
+    );
+
+}
+
+
+
+/* =========================================================
+   CLOSE COMMUNITY MODAL
+   ========================================================= */
+
+function closeCommunityModal() {
+
+    const modal =
+        document.querySelector(
+            ".share-modal-overlay"
+        );
+
+
+    if (modal) {
+
+        modal.remove();
+
+    }
+
+}
+
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHTML(value) {
+
+    if (
+        value === undefined ||
+        value === null
+    ) {
+
+        return "";
+
+    }
+
+
+    return String(value)
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+
+
+

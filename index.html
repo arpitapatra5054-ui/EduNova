@@ -15,7 +15,7 @@ content="width=device-width, initial-scale=1.0"
 
 <link
 rel="stylesheet"
-href="style.css"
+href="{{ url_for('static', filename='style.css') }}"
 >
 
 </head>
@@ -178,10 +178,9 @@ Total XP
 <section class="two-column">
 
 
-<!-- DAILY CHALLENGE -->
+<!-- ================= DAILY CHALLENGE ================= -->
 
 <div class="card">
-
 
 <div class="card-title">
 
@@ -197,7 +196,6 @@ Total XP
 
 
 <div class="daily-content">
-
 
 <div>
 
@@ -230,7 +228,7 @@ Complete Challenge
 
 
 
-<!-- LEADERBOARD -->
+<!-- ================= LEADERBOARD ================= -->
 
 <div class="card">
 
@@ -261,7 +259,7 @@ Loading...
 <section class="two-column">
 
 
-<!-- STREAK -->
+<!-- ================= STREAK ================= -->
 
 <div class="card">
 
@@ -321,86 +319,29 @@ S
 
 
 
-<!-- EARN XP -->
+<!-- ================= EARN XP ================= -->
 
-<div class="card">
 
-<div class="card-title">
+<!-- ================= VISUAL EXPERIMENT ================= -->
 
-<h3>
-⭐ Earn XP
-</h3>
+
+<!-- ================= HELP A STUDENT ================= -->
+
+
+
+
+
+</div>
+
+<div class="earn-info">
+
+
 
 </div>
 
 
-<div class="earn">
+</button>
 
-<div>
-🧪
-</div>
-
-<div>
-<b>
-Visual Experiment
-</b>
-
-<small>
-Learn by doing
-</small>
-</div>
-
-<strong>
-+70 XP
-</strong>
-
-</div>
-
-
-<div class="earn">
-
-<div>
-💬
-</div>
-
-<div>
-<b>
-Help a Student
-</b>
-
-<small>
-Share knowledge
-</small>
-</div>
-
-<strong>
-+30 XP
-</strong>
-
-</div>
-
-
-<div class="earn">
-
-<div>
-📚
-</div>
-
-<div>
-<b>
-Share Useful Notes
-</b>
-
-<small>
-Help the community
-</small>
-</div>
-
-<strong>
-+25 XP
-</strong>
-
-</div>
 
 </div>
 
@@ -431,12 +372,18 @@ Choose a BCA topic and enter any learning arena.
 
 <div class="tool-grid">
 
+
+<!-- ================= QUIZ ================= -->
+
 <button
 onclick="openArena('quiz')"
 >
 🧠 Quiz
 </button>
 
+
+
+<!-- ================= VISUAL ================= -->
 
 <button
 onclick="openArena('visual')"
@@ -445,6 +392,9 @@ onclick="openArena('visual')"
 </button>
 
 
+
+<!-- ================= DEBUG ================= -->
+
 <button
 onclick="openArena('debug')"
 >
@@ -452,11 +402,15 @@ onclick="openArena('debug')"
 </button>
 
 
+
+<!-- ================= BOMB ================= -->
+
 <button
 onclick="openArena('bomb')"
 >
 💣 Bomb Mode
 </button>
+
 
 </div>
 
@@ -508,7 +462,7 @@ class="close"
 
 
 
-<!-- ================= ACTIVITY ================= -->
+<!-- ================= RECENT ACTIVITY ================= -->
 
 <section class="card">
 
@@ -529,13 +483,22 @@ No activity yet.
 </main>
 
 
+
+<!-- ================= TOAST ================= -->
+
 <div id="toast"></div>
+
+
+<!-- ================= CONFETTI ================= -->
 
 <div id="confetti"></div>
 
 
+
+<!-- ================= JAVASCRIPT ================= -->
+
 <script
-src="app.js"
+src="{{ url_for('static', filename='app.js') }}"
 ></script>
 
 
