@@ -4,7 +4,7 @@ from datetime import date, timedelta
 import random
 
 
-app = Flask(__name__)
+app = Flask(__name__,template_folder='.',static_folder='.',static_url_path='')
 
 app.secret_key = "edunova-sih-secret-key"
 
@@ -1169,9 +1169,9 @@ def activity():
 # =====================================================
 # RUN SERVER
 # =====================================================
+import os
 
-if __name__ == "__main__":
-
-    app.run(
-        debug=True
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
     )
