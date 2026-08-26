@@ -1167,7 +1167,15 @@ def activity():
         results
     )
 
+from flask import send_from_directory
 
+@app.route('/style.css')
+def serve_css():
+    return send_from_directory('.', 'style.css')
+
+@app.route('/script.js')
+def serve_js():
+    return send_from_directory('.', 'script.js')
 # =====================================================
 # RUN SERVER
 # =====================================================
