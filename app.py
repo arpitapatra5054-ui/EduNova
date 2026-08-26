@@ -6,7 +6,7 @@ import random
 
 import os
 
-app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
+app = Flask(__name__, template_folder='templates',static_folder='.')
 
 app.secret_key = "edunova-sih-secret-key"
 
