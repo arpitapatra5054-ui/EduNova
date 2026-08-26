@@ -1,12 +1,11 @@
 /* =========================================================
    EDUNOVA - COMPLETE APP.JS
-   Quiz + Meme + Visual Simulator + Debug + Bomb
    ========================================================= */
 
 
 /* =========================================================
    GLOBAL VARIABLES
-   ========================================================= */
+========================================================= */
 
 let currentSubject = "Python";
 
@@ -33,31 +32,49 @@ let visualItems = [];
 let visualTimer = null;
 
 
+
 /* =========================================================
    API
-   ========================================================= */
+========================================================= */
 
 async function api(url, options = {}) {
 
     try {
 
-        const response = await fetch(url, options);
+        const response =
+            await fetch(url, options);
+
+
+        if (!response.ok) {
+
+            console.log(
+                "API Error:",
+                response.status,
+                url
+            );
+
+            return {};
+
+        }
+
 
         return await response.json();
 
     }
 
-    catch(error) {
+    catch (error) {
 
-        console.error(error);
-
-        showToast("Something went wrong!");
+        console.error(
+            "Fetch error:",
+            error
+        );
 
         return {};
 
     }
 
 }
+
 
 
 async function post(url, data) {
@@ -71,14 +88,12 @@ async function post(url, data) {
             method: "POST",
 
             headers: {
-
                 "Content-Type":
                 "application/json"
-
             },
 
             body:
-            JSON.stringify(data)
+                JSON.stringify(data)
 
         }
 
@@ -87,42 +102,87 @@ async function post(url, data) {
 }
 
 
+
 /* =========================================================
    INITIAL LOAD
-   ========================================================= */
+========================================================= */
 
 async function init() {
 
-    const subjects =
-        await api("/api/subjects");
+    console.log(
+        "EduNova initializing..."
+    );
 
 
-    const select =
+    loadDefaultSubjects();
+
+
+    const subjectSelect =
         document.getElementById(
             "subjectSelect"
         );
 
 
-    if (
-        subjects.subjects &&
-        subjects.subjects.length
-    ) {
+    if (!subjectSelect) {
 
-        select.innerHTML =
-            subjects.subjects
-            .map(
-                s =>
-                `<option value="${s}">
-                    ${s}
-                </option>`
-            )
-            .join("");
+        console.error(
+            "subjectSelect not found"
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const data =
+            await api(
+                "/api/subjects"
+            );
+
+
+        if (
+            data &&
+            Array.isArray(data.subjects) &&
+            data.subjects.length > 0
+        ) {
+
+            subjectSelect.innerHTML =
+                data.subjects
+                .map(
+                    subject => `
+
+                        <option value="${escapeHTML(
+                            subject
+                        )}">
+
+                            ${escapeHTML(
+                                subject
+                            )}
+
+                        </option>
+
+                    `
+                )
+                .join("");
+
+        }
+
+    }
+
+    catch (error) {
+
+        console.log(
+            "Using default subjects."
+        );
 
     }
 
 
     currentSubject =
-        select.value || "Python";
+        subjectSelect.value ||
+        "Python";
 
 
     await refreshDashboard();
@@ -133,15 +193,73 @@ async function init() {
 
     await loadActivity();
 
+
+    console.log(
+        "EduNova ready!"
+    );
+
 }
 
 
-init();
+
+/* =========================================================
+   DEFAULT SUBJECTS
+========================================================= */
+
+function loadDefaultSubjects() {
+
+    const select =
+        document.getElementById(
+            "subjectSelect"
+        );
+
+
+    if (!select) return;
+
+
+    select.innerHTML = `
+
+        <option value="Python">
+            Python
+        </option>
+
+        <option value="Data Structure">
+            Data Structure
+        </option>
+
+        <option value="Java">
+            Java
+        </option>
+
+        <option value="C">
+            C Programming
+        </option>
+
+        <option value="DBMS">
+            DBMS
+        </option>
+
+        <option value="HTML">
+            HTML
+        </option>
+
+        <option value="CSS">
+            CSS
+        </option>
+
+        <option value="JavaScript">
+            JavaScript
+        </option>
+
+    `;
+
+}
+
 
 
 /* =========================================================
    START STUDENT
-   ========================================================= */
+========================================================= */
 
 async function startStudent() {
 
@@ -149,6 +267,9 @@ async function startStudent() {
         document.getElementById(
             "nameInput"
         );
+
+
+    if (!input) return;
 
 
     const name =
@@ -168,32 +289,32 @@ async function startStudent() {
 
     const result =
         await post(
-
             "/api/start",
-
             {
                 name: name
             }
-
         );
 
 
-    if (result.success) {
+    if (
+        result &&
+        result.success
+    ) {
 
         document
-        .getElementById(
-            "profileName"
-        )
-        .textContent =
-        result.name;
+            .getElementById(
+                "profileName"
+            )
+            .textContent =
+            result.name;
 
 
         document
-        .getElementById(
-            "welcomeCard"
-        )
-        .style.display =
-        "none";
+            .getElementById(
+                "welcomeCard"
+            )
+            .style.display =
+            "none";
 
 
         showToast(
@@ -211,12 +332,44 @@ async function startStudent() {
 
     }
 
+    else {
+
+        /*
+           Even if backend /api/start
+           is not available, we still
+           allow the student to use
+           the frontend.
+        */
+
+        document
+            .getElementById(
+                "profileName"
+            )
+            .textContent =
+            name;
+
+
+        document
+            .getElementById(
+                "welcomeCard"
+            )
+            .style.display =
+            "none";
+
+
+        showToast(
+            `Welcome ${name}! 🚀`
+        );
+
+    }
+
 }
+
 
 
 /* =========================================================
    DASHBOARD
-   ========================================================= */
+========================================================= */
 
 async function refreshDashboard() {
 
@@ -226,51 +379,60 @@ async function refreshDashboard() {
         );
 
 
-    if (!data) return;
+    if (!data || Object.keys(data).length === 0) {
+
+        return;
+
+    }
 
 
     document
-    .getElementById(
-        "profileName"
-    )
-    .textContent =
-    data.name || "Student";
+        .getElementById(
+            "profileName"
+        )
+        .textContent =
+        data.name ||
+        "Student";
 
 
     document
-    .getElementById(
-        "level"
-    )
-    .textContent =
-    data.level || 1;
+        .getElementById(
+            "level"
+        )
+        .textContent =
+        data.level ||
+        1;
 
 
     document
-    .getElementById(
-        "totalXP"
-    )
-    .textContent =
-    data.xp || 0;
+        .getElementById(
+            "totalXP"
+        )
+        .textContent =
+        data.xp ||
+        0;
 
 
     document
-    .getElementById(
-        "xpNow"
-    )
-    .textContent =
-    `${data.xp || 0} XP`;
+        .getElementById(
+            "xpNow"
+        )
+        .textContent =
+        `${data.xp || 0} XP`;
 
 
     document
-    .getElementById(
-        "xpNext"
-    )
-    .textContent =
-    `${data.next_xp || 250} XP`;
+        .getElementById(
+            "xpNext"
+        )
+        .textContent =
+        `${data.next_xp || 250} XP`;
 
 
     const level =
-        Number(data.level || 1);
+        Number(
+            data.level || 1
+        );
 
 
     const previous =
@@ -279,9 +441,16 @@ async function refreshDashboard() {
 
     let percent =
         (
-            ((data.xp || 0) - previous)
-            / 250
-        ) * 100;
+            (
+                (data.xp || 0)
+                -
+                previous
+            )
+            /
+            250
+        )
+        *
+        100;
 
 
     percent =
@@ -295,35 +464,38 @@ async function refreshDashboard() {
 
 
     document
-    .getElementById(
-        "xpFill"
-    )
-    .style.width =
-    percent + "%";
+        .getElementById(
+            "xpFill"
+        )
+        .style.width =
+        percent + "%";
 
 
     document
-    .getElementById(
-        "levelText"
-    )
-    .textContent =
-    `Earn ${
-        (data.next_xp || 250) -
-        (data.xp || 0)
-    } XP to unlock Level ${
-        level + 1
-    }.`;
-
+        .getElementById(
+            "levelText"
+        )
+        .textContent =
+        `Earn ${
+            Math.max(
+                0,
+                (data.next_xp || 250)
+                -
+                (data.xp || 0)
+            )
+        } XP to unlock Level ${
+            level + 1
+        }.`;
 
 
     document
-    .getElementById(
-        "streakText"
-    )
-    .textContent =
-    `You're on a ${
-        data.streak || 0
-    } day streak! 🔥`;
+        .getElementById(
+            "streakText"
+        )
+        .textContent =
+        `You're on a ${
+            data.streak || 0
+        } day streak! 🔥`;
 
 
     updateStreak(
@@ -333,9 +505,10 @@ async function refreshDashboard() {
 }
 
 
+
 /* =========================================================
    STREAK
-   ========================================================= */
+========================================================= */
 
 function updateStreak(streak) {
 
@@ -373,32 +546,47 @@ function updateStreak(streak) {
 }
 
 
+
 /* =========================================================
    SUBJECT CHANGE
-   ========================================================= */
+========================================================= */
 
-document
-.getElementById(
-    "subjectSelect"
-)
-.addEventListener(
-    "change",
+document.addEventListener(
+    "DOMContentLoaded",
     function () {
 
-        currentSubject =
-            this.value;
+        const select =
+            document.getElementById(
+                "subjectSelect"
+            );
 
-        showToast(
-            `${currentSubject} selected 📚`
+
+        if (!select) return;
+
+
+        select.addEventListener(
+            "change",
+            function () {
+
+                currentSubject =
+                    this.value;
+
+
+                showToast(
+                    `${currentSubject} selected 📚`
+                );
+
+            }
         );
 
     }
 );
 
 
+
 /* =========================================================
-   DAILY CHALLENGE
-   ========================================================= */
+   DAILY
+========================================================= */
 
 async function loadDaily() {
 
@@ -411,34 +599,22 @@ async function loadDaily() {
     if (!data) return;
 
 
-    document
-    .getElementById(
-        "dailyTitle"
-    )
-    .textContent =
-    data.title || "Daily Challenge";
+    const title =
+        document.getElementById(
+            "dailyTitle"
+        );
 
 
-    document
-    .getElementById(
-        "dailyDesc"
-    )
-    .textContent =
-    `Complete ${
-        data.subject || currentSubject
-    } challenge and earn ${
-        data.xp || 100
-    } XP.`;
+    const desc =
+        document.getElementById(
+            "dailyDesc"
+        );
 
 
-    document
-    .getElementById(
-        "dailyStatus"
-    )
-    .textContent =
-    data.completed
-    ? "1/1"
-    : "0/1";
+    const status =
+        document.getElementById(
+            "dailyStatus"
+        );
 
 
     const button =
@@ -447,9 +623,34 @@ async function loadDaily() {
         );
 
 
+    if (!title) return;
+
+
+    title.textContent =
+        data.title ||
+        "Daily Challenge";
+
+
+    desc.textContent =
+        `Complete ${
+            data.subject ||
+            currentSubject
+        } challenge and earn ${
+            data.xp ||
+            100
+        } XP.`;
+
+
+    status.textContent =
+        data.completed
+        ? "1/1"
+        : "0/1";
+
+
     if (data.completed) {
 
-        button.disabled = true;
+        button.disabled =
+            true;
 
         button.textContent =
             "Completed ✓";
@@ -458,7 +659,8 @@ async function loadDaily() {
 
     else {
 
-        button.disabled = false;
+        button.disabled =
+            false;
 
         button.textContent =
             "Complete Challenge";
@@ -468,9 +670,10 @@ async function loadDaily() {
 }
 
 
+
 /* =========================================================
    START DAILY
-   ========================================================= */
+========================================================= */
 
 async function startDaily() {
 
@@ -480,19 +683,29 @@ async function startDaily() {
         );
 
 
-    if (!data) return;
+    if (
+        data &&
+        data.subject
+    ) {
+
+        currentSubject =
+            data.subject;
 
 
-    currentSubject =
-        data.subject;
+        const select =
+            document.getElementById(
+                "subjectSelect"
+            );
 
 
-    document
-    .getElementById(
-        "subjectSelect"
-    )
-    .value =
-    data.subject;
+        if (select) {
+
+            select.value =
+                data.subject;
+
+        }
+
+    }
 
 
     openArena("quiz");
@@ -500,9 +713,10 @@ async function startDaily() {
 }
 
 
+
 /* =========================================================
    LEADERBOARD
-   ========================================================= */
+========================================================= */
 
 async function loadLeaderboard() {
 
@@ -518,7 +732,20 @@ async function loadLeaderboard() {
         );
 
 
+    if (!box) return;
+
+
     if (!Array.isArray(data)) {
+
+        box.innerHTML =
+            "No leaderboard data.";
+
+        return;
+
+    }
+
+
+    if (data.length === 0) {
 
         box.innerHTML =
             "No leaderboard data.";
@@ -533,34 +760,43 @@ async function loadLeaderboard() {
         .map(
             student => `
 
-            <div class="
-                rank
-                ${student.you ? "you" : ""}
-            ">
+                <div class="
+                    rank
+                    ${
+                        student.you
+                        ? "you"
+                        : ""
+                    }
+                ">
 
-                <b>
+                    <b>
 
-                ${
-                    student.rank === 1
-                    ? "🥇"
-                    : student.rank === 2
-                    ? "🥈"
-                    : student.rank === 3
-                    ? "🥉"
-                    : "#" + student.rank
-                }
+                        ${
+                            student.rank === 1
+                            ? "🥇"
+                            : student.rank === 2
+                            ? "🥈"
+                            : student.rank === 3
+                            ? "🥉"
+                            : "#" +
+                              student.rank
+                        }
 
-                </b>
+                    </b>
 
-                <span>
-                    👤 ${student.name}
-                </span>
+                    <span>
+                        👤
+                        ${escapeHTML(
+                            student.name
+                        )}
+                    </span>
 
-                <strong>
-                    ${student.xp} XP
-                </strong>
+                    <strong>
+                        ${student.xp || 0}
+                        XP
+                    </strong>
 
-            </div>
+                </div>
 
             `
         )
@@ -569,9 +805,10 @@ async function loadLeaderboard() {
 }
 
 
+
 /* =========================================================
    ACTIVITY
-   ========================================================= */
+========================================================= */
 
 async function loadActivity() {
 
@@ -585,6 +822,9 @@ async function loadActivity() {
         document.getElementById(
             "activity"
         );
+
+
+    if (!box) return;
 
 
     if (
@@ -605,34 +845,36 @@ async function loadActivity() {
         .map(
             item => `
 
-            <div class="activity-row">
+                <div class="activity-row">
 
-                <div>
+                    <div>
 
-                    <b>
-                        ${item.subject}
-                        Quiz
-                    </b>
+                        <b>
+                            ${escapeHTML(
+                                item.subject
+                            )}
+                            Quiz
+                        </b>
 
-                    <small>
+                        <small>
 
-                        ${item.score}
-                        /
-                        ${item.total}
-                        correct
+                            ${item.score}
+                            /
+                            ${item.total}
+                            correct
 
-                        •
-                        ${item.percentage}%
+                            •
+                            ${item.percentage}%
 
-                    </small>
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        +XP
+                    </strong>
 
                 </div>
-
-                <strong>
-                    +XP
-                </strong>
-
-            </div>
 
             `
         )
@@ -641,16 +883,34 @@ async function loadActivity() {
 }
 
 
+
 /* =========================================================
    OPEN ARENA
-   ========================================================= */
+========================================================= */
 
 function openArena(mode) {
+
+    console.log(
+        "Opening arena:",
+        mode
+    );
+
 
     const arena =
         document.getElementById(
             "arena"
         );
+
+
+    if (!arena) {
+
+        console.error(
+            "Arena not found!"
+        );
+
+        return;
+
+    }
 
 
     arena.classList.remove(
@@ -663,9 +923,14 @@ function openArena(mode) {
     });
 
 
-    clearInterval(bombTimer);
+    clearInterval(
+        bombTimer
+    );
 
-    clearInterval(visualTimer);
+
+    clearInterval(
+        visualTimer
+    );
 
 
     if (mode === "quiz") {
@@ -695,87 +960,68 @@ function openArena(mode) {
 }
 
 
+
 /* =========================================================
    QUIZ
-   ========================================================= */
+========================================================= */
 
 async function startQuiz() {
 
     document
-    .getElementById(
-        "arenaTitle"
-    )
-    .textContent =
-    "🧠 Quiz Arena";
+        .getElementById(
+            "arenaTitle"
+        )
+        .textContent =
+        "🧠 Quiz Arena";
 
 
     document
-    .getElementById(
-        "arenaSubtitle"
-    )
-    .textContent =
-    `${currentSubject} • Test your knowledge`;
-
+        .getElementById(
+            "arenaSubtitle"
+        )
+        .textContent =
+        `${currentSubject} • Test your knowledge`;
 
 
     const level =
         Number(
             document
-            .getElementById(
-                "level"
-            )
-            .textContent
+                .getElementById(
+                    "level"
+                )
+                .textContent
         ) || 1;
 
 
     const data =
         await api(
-
             `/api/questions?subject=${
                 encodeURIComponent(
                     currentSubject
                 )
             }&level=${level}`
-
         );
 
 
     if (
-        !data.questions ||
-        data.questions.length === 0
+        data &&
+        Array.isArray(data.questions) &&
+        data.questions.length > 0
     ) {
 
-        document
-        .getElementById(
-            "arenaContent"
-        )
-        .innerHTML = `
-
-            <div class="meme">
-
-                <div class="emoji">
-                    📚
-                </div>
-
-                <h3>
-                    No questions available
-                </h3>
-
-                <p>
-                    Try another BCA topic.
-                </p>
-
-            </div>
-
-        `;
-
-        return;
+        quiz =
+            data.questions;
 
     }
 
+    else {
 
-    quiz =
-        data.questions;
+        quiz =
+            getFallbackQuizQuestions(
+                currentSubject
+            );
+
+    }
 
 
     questionIndex = 0;
@@ -787,9 +1033,111 @@ async function startQuiz() {
 }
 
 
+
+/* =========================================================
+   FALLBACK QUIZ
+========================================================= */
+
+function getFallbackQuizQuestions(subject) {
+
+    const commonQuestions = [
+
+        {
+
+            question:
+                "Which data structure follows FIFO?",
+
+            options: [
+                "Stack",
+                "Queue",
+                "Tree",
+                "Graph"
+            ],
+
+            answer: 1
+
+        },
+
+
+        {
+
+            question:
+                "Which data structure follows LIFO?",
+
+            options: [
+                "Queue",
+                "Stack",
+                "Array",
+                "Graph"
+            ],
+
+            answer: 1
+
+        },
+
+
+        {
+
+            question:
+                "Which keyword is used to define a function in Python?",
+
+            options: [
+                "function",
+                "def",
+                "func",
+                "define"
+            ],
+
+            answer: 1
+
+        },
+
+
+        {
+
+            question:
+                "Which symbol is used for equality comparison in programming?",
+
+            options: [
+                "=",
+                "==",
+                "!=",
+                "<="
+            ],
+
+            answer: 1
+
+        },
+
+
+        {
+
+            question:
+                "Which data structure stores elements using indexes?",
+
+            options: [
+                "Array",
+                "Queue",
+                "Tree",
+                "Graph"
+            ],
+
+            answer: 0
+
+        }
+
+    ];
+
+
+    return commonQuestions;
+
+}
+
+
+
 /* =========================================================
    DRAW QUESTION
-   ========================================================= */
+========================================================= */
 
 function drawQuestion() {
 
@@ -822,7 +1170,6 @@ function drawQuestion() {
 
     box.innerHTML = `
 
-        <!-- REACTION WILL APPEAR HERE -->
         <div
             id="reaction"
             class="reaction-top"
@@ -840,9 +1187,12 @@ function drawQuestion() {
 
             </div>
 
+
             <div class="question-text">
 
-                ${q.question}
+                ${escapeHTML(
+                    q.question
+                )}
 
             </div>
 
@@ -856,26 +1206,30 @@ function drawQuestion() {
                 .map(
                     (option, index) => `
 
-                    <button
-                        class="option"
-                        onclick="
-                            answerQuestion(
-                                ${index}
-                            )
-                        "
-                    >
-
-                        <span class="option-letter">
-                            ${
-                                String.fromCharCode(
-                                    65 + index
+                        <button
+                            class="option"
+                            onclick="
+                                answerQuestion(
+                                    ${index}
                                 )
-                            }
-                        </span>
+                            "
+                        >
 
-                        ${option}
+                            <span
+                                class="option-letter"
+                            >
+                                ${
+                                    String.fromCharCode(
+                                        65 + index
+                                    )
+                                }
+                            </span>
 
-                    </button>
+                            ${escapeHTML(
+                                option
+                            )}
+
+                        </button>
 
                     `
                 )
@@ -889,9 +1243,10 @@ function drawQuestion() {
 }
 
 
+
 /* =========================================================
    ANSWER QUESTION
-   ========================================================= */
+========================================================= */
 
 function answerQuestion(index) {
 
@@ -917,7 +1272,8 @@ function answerQuestion(index) {
     options.forEach(
         (button, i) => {
 
-            button.disabled = true;
+            button.disabled =
+                true;
 
 
             if (
@@ -982,13 +1338,14 @@ function answerQuestion(index) {
 }
 
 
+
 /* =========================================================
-   QUIZ FINISH
-   ========================================================= */
+   FINISH QUIZ
+========================================================= */
 
 async function finishQuiz() {
 
-    const result =
+    let result =
         await post(
             "/api/save-result",
             {
@@ -1009,76 +1366,64 @@ async function finishQuiz() {
         );
 
 
-    const daily =
-        await api(
-            "/api/daily"
-        );
+    if (!result) {
 
-
-    if (
-        !daily.completed &&
-        daily.subject ===
-        currentSubject &&
-        score >=
-        Math.ceil(
-            quiz.length * 0.6
-        )
-    ) {
-
-        await post(
-            "/api/daily/complete",
-            {
-                challenge_id:
-                    daily.id
-            }
-        );
+        result = {};
 
     }
 
 
     const percentage =
-        result.percentage || 0;
+        result.percentage !== undefined
+        ? result.percentage
+        : Math.round(
+            (
+                score /
+                quiz.length
+            ) *
+            100
+        );
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
 
-        <div class="meme">
+            <div class="meme">
 
-            <div class="emoji">
-                🏆🎉🚀
+                <div class="emoji">
+                    🏆🎉🚀
+                </div>
+
+                <h2>
+                    Quiz Complete!
+                </h2>
+
+                <p>
+                    ${score}
+                    /
+                    ${quiz.length}
+                    correct
+                </p>
+
+                <p>
+                    Score:
+                    ${percentage}%
+                </p>
+
+                <br>
+
+                <button
+                    onclick="startQuiz()"
+                >
+                    🔄 Play Again
+                </button>
+
             </div>
 
-            <h2>
-                Quiz Complete!
-            </h2>
-
-            <p>
-                ${score}
-                /
-                ${quiz.length}
-                correct
-            </p>
-
-            <p>
-                Score:
-                ${percentage}%
-            </p>
-
-            <br>
-
-            <button
-                onclick="startQuiz()"
-            >
-                🔄 Play Again
-            </button>
-
-        </div>
-
-    `;
+        `;
 
 
     await refreshDashboard();
@@ -1089,14 +1434,16 @@ async function finishQuiz() {
 
     await loadActivity();
 
+
     confetti();
 
 }
 
 
+
 /* =========================================================
    MEME SYSTEM
-   ========================================================= */
+========================================================= */
 
 function showMeme(correct) {
 
@@ -1108,6 +1455,11 @@ function showMeme(correct) {
 
     if (!box) return;
 
+
+    /*
+       IMPORTANT:
+       Your JPG files remain here.
+    */
 
     const correctMemes = [
 
@@ -1141,7 +1493,8 @@ function showMeme(correct) {
         memes[
             Math.floor(
                 Math.random()
-                * memes.length
+                *
+                memes.length
             )
         ];
 
@@ -1175,6 +1528,7 @@ function showMeme(correct) {
             </div>
 
         `;
+
 
         confetti();
 
@@ -1215,9 +1569,10 @@ function showMeme(correct) {
 }
 
 
+
 /* =========================================================
    SOUND
-   ========================================================= */
+========================================================= */
 
 function sound(
     frequency,
@@ -1276,7 +1631,7 @@ function sound(
 
     }
 
-    catch(error) {
+    catch (error) {
 
         console.log(error);
 
@@ -1285,11 +1640,12 @@ function sound(
 }
 
 
+
 function successSound() {
 
     sound(
         880,
-        .12,
+        0.12,
         "sine"
     );
 
@@ -1299,7 +1655,7 @@ function successSound() {
 
             sound(
                 1200,
-                .15,
+                0.15,
                 "sine"
             );
 
@@ -1310,150 +1666,138 @@ function successSound() {
 }
 
 
+
 function wrongSound() {
 
     sound(
         150,
-        .25,
+        0.25,
         "sawtooth"
     );
 
 }
 
 
+
 /* =========================================================
    VISUAL SIMULATOR
-   ========================================================= */
+========================================================= */
 
 function startVisual() {
 
     document
-    .getElementById(
-        "arenaTitle"
-    )
-    .textContent =
-    "🎨 Visual Simulator";
+        .getElementById(
+            "arenaTitle"
+        )
+        .textContent =
+        "🎨 Visual Simulator";
 
 
     document
-    .getElementById(
-        "arenaSubtitle"
-    )
-    .textContent =
-    `${currentSubject} • Choose what you want to visualize`;
+        .getElementById(
+            "arenaSubtitle"
+        )
+        .textContent =
+        `${currentSubject} • Choose what you want to visualize`;
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
 
-        <div class="visual-menu">
+            <div class="visual-menu">
 
-            <h3>
-                Choose a Visual Simulation
-            </h3>
+                <h3>
+                    Choose a Visual Simulation
+                </h3>
 
-            <p>
-                Pick a concept and watch
-                how it works step-by-step.
-            </p>
-
-
-            <div class="visual-choice-grid">
-
-                <button
-                    onclick="visualArray()"
-                >
-                    📦
-                    <span>Array</span>
-                    <small>Index & Storage</small>
-                </button>
+                <p>
+                    Pick a concept and watch
+                    how it works step-by-step.
+                </p>
 
 
-                <button
-                    onclick="visualLinkedList()"
-                >
-                    🔗
-                    <span>Linked List</span>
-                    <small>Nodes & Links</small>
-                </button>
+                <div class="visual-choice-grid">
+
+                    <button onclick="visualArray()">
+                        📦
+                        <span>Array</span>
+                        <small>Index & Storage</small>
+                    </button>
 
 
-                <button
-                    onclick="visualStack()"
-                >
-                    📚
-                    <span>Stack</span>
-                    <small>LIFO</small>
-                </button>
+                    <button onclick="visualLinkedList()">
+                        🔗
+                        <span>Linked List</span>
+                        <small>Nodes & Links</small>
+                    </button>
 
 
-                <button
-                    onclick="visualQueue()"
-                >
-                    🚶
-                    <span>Queue</span>
-                    <small>FIFO</small>
-                </button>
+                    <button onclick="visualStack()">
+                        📚
+                        <span>Stack</span>
+                        <small>LIFO</small>
+                    </button>
 
 
-                <button
-                    onclick="visualLoop()"
-                >
-                    🔁
-                    <span>Loop</span>
-                    <small>Iteration</small>
-                </button>
+                    <button onclick="visualQueue()">
+                        🚶
+                        <span>Queue</span>
+                        <small>FIFO</small>
+                    </button>
 
 
-                <button
-                    onclick="visualTree()"
-                >
-                    🌳
-                    <span>Binary Tree</span>
-                    <small>Nodes</small>
-                </button>
+                    <button onclick="visualLoop()">
+                        🔁
+                        <span>Loop</span>
+                        <small>Iteration</small>
+                    </button>
 
 
-                <button
-                    onclick="visualSearch()"
-                >
-                    🔍
-                    <span>Searching</span>
-                    <small>Linear Search</small>
-                </button>
+                    <button onclick="visualTree()">
+                        🌳
+                        <span>Binary Tree</span>
+                        <small>Nodes</small>
+                    </button>
 
 
-                <button
-                    onclick="visualSort()"
-                >
-                    📊
-                    <span>Sorting</span>
-                    <small>Bubble Sort</small>
-                </button>
+                    <button onclick="visualSearch()">
+                        🔍
+                        <span>Searching</span>
+                        <small>Linear Search</small>
+                    </button>
+
+
+                    <button onclick="visualSort()">
+                        📊
+                        <span>Sorting</span>
+                        <small>Bubble Sort</small>
+                    </button>
+
+                </div>
 
             </div>
 
-        </div>
-
-    `;
+        `;
 
 }
 
 
+
 /* =========================================================
    VISUAL HEADER
-   ========================================================= */
+========================================================= */
 
-function visualHeader(title, description) {
+function visualHeader(
+    title,
+    description
+) {
 
     return `
 
-        <button
-            onclick="startVisual()"
-        >
+        <button onclick="startVisual()">
             ← Back to Visuals
         </button>
 
@@ -1478,9 +1822,10 @@ function visualHeader(title, description) {
 }
 
 
+
 /* =========================================================
-   ARRAY VISUAL
-   ========================================================= */
+   ARRAY
+========================================================= */
 
 function visualArray() {
 
@@ -1494,10 +1839,10 @@ function visualArray() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "📦 Array Visualizer",
@@ -1508,24 +1853,20 @@ function visualArray() {
 
         `
 
-        <div
-            id="visualBlocks"
-            class="visual-array"
-        ></div>
+            <div
+                id="visualBlocks"
+                class="visual-array"
+            ></div>
 
-        <br>
+            <br>
 
-        <button
-            onclick="addArrayElement()"
-        >
-            ➕ Add Element
-        </button>
+            <button onclick="addArrayElement()">
+                ➕ Add Element
+            </button>
 
-        <button
-            onclick="removeArrayElement()"
-        >
-            ➖ Remove Last
-        </button>
+            <button onclick="removeArrayElement()">
+                ➖ Remove Last
+            </button>
 
         `;
 
@@ -1533,6 +1874,7 @@ function visualArray() {
     drawArray();
 
 }
+
 
 
 function drawArray() {
@@ -1543,14 +1885,15 @@ function drawArray() {
         );
 
 
+    if (!box) return;
+
+
     box.innerHTML =
         visualItems
         .map(
             (item, index) => `
 
-                <div
-                    class="visual-node"
-                >
+                <div class="visual-node">
 
                     <small>
                         Index ${index}
@@ -1569,6 +1912,7 @@ function drawArray() {
 }
 
 
+
 function addArrayElement() {
 
     visualItems.push(
@@ -1581,6 +1925,7 @@ function addArrayElement() {
     drawArray();
 
 }
+
 
 
 function removeArrayElement() {
@@ -1598,13 +1943,14 @@ function removeArrayElement() {
 }
 
 
+
 /* =========================================================
    LINKED LIST
-   ========================================================= */
+========================================================= */
 
 function visualLinkedList() {
 
-    const nodes = [
+    window.linkedNodes = [
         10,
         20,
         30,
@@ -1613,10 +1959,10 @@ function visualLinkedList() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "🔗 Linked List Visualizer",
@@ -1627,29 +1973,24 @@ function visualLinkedList() {
 
         `
 
-        <div
-            id="linkedNodes"
-            class="linked-list"
-        ></div>
+            <div
+                id="linkedNodes"
+                class="linked-list"
+            ></div>
 
-        <br>
+            <br>
 
-        <button
-            onclick="addLinkedNode()"
-        >
-            ➕ Add Node
-        </button>
+            <button onclick="addLinkedNode()">
+                ➕ Add Node
+            </button>
 
         `;
-
-
-    window.linkedNodes =
-        nodes;
 
 
     drawLinkedList();
 
 }
+
 
 
 function drawLinkedList() {
@@ -1660,6 +2001,9 @@ function drawLinkedList() {
         );
 
 
+    if (!box) return;
+
+
     box.innerHTML =
         window.linkedNodes
         .map(
@@ -1668,17 +2012,26 @@ function drawLinkedList() {
                 <div class="linked-node">
 
                     <div>
-                        <small>DATA</small>
+
+                        <small>
+                            DATA
+                        </small>
+
                         <strong>
                             ${item}
                         </strong>
+
                     </div>
 
                     <span>
-                        ${index <
-                        window.linkedNodes.length - 1
-                        ? "→"
-                        : "→ NULL"}
+
+                        ${
+                            index <
+                            window.linkedNodes.length - 1
+                            ? "→"
+                            : "→ NULL"
+                        }
+
                     </span>
 
                 </div>
@@ -1688,6 +2041,7 @@ function drawLinkedList() {
         .join("");
 
 }
+
 
 
 function addLinkedNode() {
@@ -1704,9 +2058,10 @@ function addLinkedNode() {
 }
 
 
+
 /* =========================================================
    STACK
-   ========================================================= */
+========================================================= */
 
 function visualStack() {
 
@@ -1718,10 +2073,10 @@ function visualStack() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "📚 Stack Visualizer",
@@ -1732,24 +2087,20 @@ function visualStack() {
 
         `
 
-        <div
-            id="stackContainer"
-            class="stack-container"
-        ></div>
+            <div
+                id="stackContainer"
+                class="stack-container"
+            ></div>
 
-        <br>
+            <br>
 
-        <button
-            onclick="pushStack()"
-        >
-            ➕ PUSH
-        </button>
+            <button onclick="pushStack()">
+                ➕ PUSH
+            </button>
 
-        <button
-            onclick="popStack()"
-        >
-            ➖ POP
-        </button>
+            <button onclick="popStack()">
+                ➖ POP
+            </button>
 
         `;
 
@@ -1757,6 +2108,7 @@ function visualStack() {
     drawStack();
 
 }
+
 
 
 function drawStack() {
@@ -1767,6 +2119,9 @@ function drawStack() {
         );
 
 
+    if (!box) return;
+
+
     box.innerHTML =
         window.stackData
         .slice()
@@ -1775,7 +2130,7 @@ function drawStack() {
             item => `
 
                 <div class="stack-item">
-                    ${item}
+                    ${escapeHTML(item)}
                 </div>
 
             `
@@ -1783,6 +2138,7 @@ function drawStack() {
         .join("");
 
 }
+
 
 
 function pushStack() {
@@ -1800,6 +2156,7 @@ function pushStack() {
 }
 
 
+
 function popStack() {
 
     if (
@@ -1815,9 +2172,10 @@ function popStack() {
 }
 
 
+
 /* =========================================================
    QUEUE
-   ========================================================= */
+========================================================= */
 
 function visualQueue() {
 
@@ -1829,10 +2187,10 @@ function visualQueue() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "🚶 Queue Visualizer",
@@ -1843,24 +2201,20 @@ function visualQueue() {
 
         `
 
-        <div
-            id="queueContainer"
-            class="queue-container"
-        ></div>
+            <div
+                id="queueContainer"
+                class="queue-container"
+            ></div>
 
-        <br>
+            <br>
 
-        <button
-            onclick="enqueue()"
-        >
-            ➕ ENQUEUE
-        </button>
+            <button onclick="enqueue()">
+                ➕ ENQUEUE
+            </button>
 
-        <button
-            onclick="dequeue()"
-        >
-            ➖ DEQUEUE
-        </button>
+            <button onclick="dequeue()">
+                ➖ DEQUEUE
+            </button>
 
         `;
 
@@ -1868,6 +2222,7 @@ function visualQueue() {
     drawQueue();
 
 }
+
 
 
 function drawQueue() {
@@ -1878,13 +2233,16 @@ function drawQueue() {
         );
 
 
+    if (!box) return;
+
+
     box.innerHTML =
         window.queueData
         .map(
             item => `
 
                 <div class="queue-item">
-                    ${item}
+                    ${escapeHTML(item)}
                 </div>
 
             `
@@ -1892,6 +2250,7 @@ function drawQueue() {
         .join("");
 
 }
+
 
 
 function enqueue() {
@@ -1909,6 +2268,7 @@ function enqueue() {
 }
 
 
+
 function dequeue() {
 
     if (
@@ -1924,17 +2284,18 @@ function dequeue() {
 }
 
 
+
 /* =========================================================
-   LOOP VISUAL
-   ========================================================= */
+   LOOP
+========================================================= */
 
 function visualLoop() {
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "🔁 Loop Visualizer",
@@ -1945,26 +2306,24 @@ function visualLoop() {
 
         `
 
-        <div class="loop-box">
+            <div class="loop-box">
 
-            <div
-                id="loopCounter"
-                class="loop-counter"
-            >
-                0
+                <div
+                    id="loopCounter"
+                    class="loop-counter"
+                >
+                    0
+                </div>
+
+                <p>
+                    for (i = 0; i < 10; i++)
+                </p>
+
+                <button onclick="runLoopStep()">
+                    ▶ Next Iteration
+                </button>
+
             </div>
-
-            <p>
-                for (i = 0; i < 10; i++)
-            </p>
-
-            <button
-                onclick="runLoopStep()"
-            >
-                ▶ Next Iteration
-            </button>
-
-        </div>
 
         `;
 
@@ -1972,6 +2331,7 @@ function visualLoop() {
     window.loopValue = 0;
 
 }
+
 
 
 function runLoopStep() {
@@ -1996,25 +2356,27 @@ function runLoopStep() {
     }
 
 
-    window.loopValue++;
-
     counter.textContent =
         window.loopValue;
+
+
+    window.loopValue++;
 
 }
 
 
+
 /* =========================================================
    BINARY TREE
-   ========================================================= */
+========================================================= */
 
 function visualTree() {
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "🌳 Binary Tree",
@@ -2025,62 +2387,63 @@ function visualTree() {
 
         `
 
-        <div class="tree">
+            <div class="tree">
 
-            <div class="tree-node root">
-                50
+                <div class="tree-node root">
+                    50
+                </div>
+
+                <div class="tree-line">
+                    ↙
+                    &nbsp;&nbsp;&nbsp;&nbsp;
+                    ↘
+                </div>
+
+                <div class="tree-children">
+
+                    <div class="tree-node">
+                        30
+                    </div>
+
+                    <div class="tree-node">
+                        70
+                    </div>
+
+                </div>
+
+                <br>
+
+                <div class="tree-children">
+
+                    <div class="tree-node">
+                        20
+                    </div>
+
+                    <div class="tree-node">
+                        40
+                    </div>
+
+                    <div class="tree-node">
+                        60
+                    </div>
+
+                    <div class="tree-node">
+                        80
+                    </div>
+
+                </div>
+
             </div>
-
-            <div class="tree-line">
-                ↙
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                ↘
-            </div>
-
-            <div class="tree-children">
-
-                <div class="tree-node">
-                    30
-                </div>
-
-                <div class="tree-node">
-                    70
-                </div>
-
-            </div>
-
-            <br>
-
-            <div class="tree-children">
-
-                <div class="tree-node">
-                    20
-                </div>
-
-                <div class="tree-node">
-                    40
-                </div>
-
-                <div class="tree-node">
-                    60
-                </div>
-
-                <div class="tree-node">
-                    80
-                </div>
-
-            </div>
-
-        </div>
 
         `;
 
 }
 
 
+
 /* =========================================================
-   SEARCH VISUAL
-   ========================================================= */
+   SEARCH
+========================================================= */
 
 function visualSearch() {
 
@@ -2097,10 +2460,10 @@ function visualSearch() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "🔍 Linear Search",
@@ -2111,24 +2474,20 @@ function visualSearch() {
 
         `
 
-        <div
-            id="searchBlocks"
-            class="visual-array"
-        ></div>
+            <div
+                id="searchBlocks"
+                class="visual-array"
+            ></div>
 
-        <br>
+            <br>
 
-        <button
-            onclick="searchStep()"
-        >
-            🔎 Check Next
-        </button>
+            <button onclick="searchStep()">
+                🔎 Check Next
+            </button>
 
-        <p
-            id="searchMessage"
-        >
-            Search for 55
-        </p>
+            <p id="searchMessage">
+                Search for 55
+            </p>
 
         `;
 
@@ -2138,25 +2497,33 @@ function visualSearch() {
 }
 
 
+
 function drawSearch() {
 
-    document
-    .getElementById(
-        "searchBlocks"
-    )
-    .innerHTML =
+    const box =
+        document.getElementById(
+            "searchBlocks"
+        );
+
+
+    if (!box) return;
+
+
+    box.innerHTML =
         window.searchArray
         .map(
             (item, index) => `
 
                 <div
-                    class="visual-node
-                    ${
-                        index ===
-                        window.searchIndex
-                        ? "highlight"
-                        : ""
-                    }"
+                    class="
+                        visual-node
+                        ${
+                            index ===
+                            window.searchIndex
+                            ? "highlight"
+                            : ""
+                        }
+                    "
                 >
 
                     ${item}
@@ -2170,9 +2537,11 @@ function drawSearch() {
 }
 
 
+
 function searchStep() {
 
     const target = 55;
+
 
     if (
         window.searchIndex >=
@@ -2223,9 +2592,10 @@ function searchStep() {
 }
 
 
+
 /* =========================================================
    BUBBLE SORT
-   ========================================================= */
+========================================================= */
 
 function visualSort() {
 
@@ -2238,14 +2608,11 @@ function visualSort() {
     ];
 
 
-    window.sortIndex = 0;
-
-
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML =
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML =
 
         visualHeader(
             "📊 Bubble Sort",
@@ -2256,18 +2623,16 @@ function visualSort() {
 
         `
 
-        <div
-            id="sortBlocks"
-            class="visual-array"
-        ></div>
+            <div
+                id="sortBlocks"
+                class="visual-array"
+            ></div>
 
-        <br>
+            <br>
 
-        <button
-            onclick="sortStep()"
-        >
-            ▶ Next Sort Step
-        </button>
+            <button onclick="sortStep()">
+                ▶ Next Sort Step
+            </button>
 
         `;
 
@@ -2277,16 +2642,22 @@ function visualSort() {
 }
 
 
+
 function drawSort() {
 
-    document
-    .getElementById(
-        "sortBlocks"
-    )
-    .innerHTML =
+    const box =
+        document.getElementById(
+            "sortBlocks"
+        );
+
+
+    if (!box) return;
+
+
+    box.innerHTML =
         window.sortArray
         .map(
-            (item, index) => `
+            item => `
 
                 <div class="visual-node">
                     ${item}
@@ -2299,6 +2670,7 @@ function drawSort() {
 }
 
 
+
 function sortStep() {
 
     let swapped = false;
@@ -2306,7 +2678,8 @@ function sortStep() {
 
     for (
         let i = 0;
-        i < window.sortArray.length - 1;
+        i <
+        window.sortArray.length - 1;
         i++
     ) {
 
@@ -2319,11 +2692,14 @@ function sortStep() {
             const temp =
                 window.sortArray[i];
 
+
             window.sortArray[i] =
                 window.sortArray[i + 1];
 
+
             window.sortArray[i + 1] =
                 temp;
+
 
             swapped = true;
 
@@ -2350,56 +2726,57 @@ function sortStep() {
 }
 
 
+
 /* =========================================================
    DEBUG ARENA
-   ========================================================= */
+========================================================= */
 
 async function startDebug() {
 
-    clearInterval(bombTimer);
+    clearInterval(
+        bombTimer
+    );
 
 
     document
-    .getElementById(
-        "arenaTitle"
-    )
-    .textContent =
-    "🛠 Debugging Arena";
+        .getElementById(
+            "arenaTitle"
+        )
+        .textContent =
+        "🛠 Debugging Arena";
 
 
     document
-    .getElementById(
-        "arenaSubtitle"
-    )
-    .textContent =
-    `${currentSubject} • Find the bug`;
-
+        .getElementById(
+            "arenaSubtitle"
+        )
+        .textContent =
+        `${currentSubject} • Find the bug`;
 
 
     const level =
         Number(
             document
-            .getElementById(
-                "level"
-            )
-            .textContent
+                .getElementById(
+                    "level"
+                )
+                .textContent
         ) || 1;
 
 
     const data =
         await api(
-
             `/api/debug?subject=${
                 encodeURIComponent(
                     currentSubject
                 )
             }&level=${level}`
-
         );
 
 
     if (
-        data.questions &&
+        data &&
+        Array.isArray(data.questions) &&
         data.questions.length
     ) {
 
@@ -2427,9 +2804,10 @@ async function startDebug() {
 }
 
 
+
 /* =========================================================
-   FALLBACK DEBUG QUESTIONS
-   ========================================================= */
+   FALLBACK DEBUG
+========================================================= */
 
 function getFallbackDebugQuestions(subject) {
 
@@ -2438,7 +2816,7 @@ function getFallbackDebugQuestions(subject) {
         {
 
             question:
-            "Find the mistake in this code.",
+                "Find the mistake in this code.",
 
             code:
 `int a = 10;
@@ -2458,7 +2836,7 @@ if(a = 10){
             answer: 0,
 
             explanation:
-            "Use == for comparison: if(a == 10)"
+                "Use == for comparison: if(a == 10)"
 
         },
 
@@ -2466,7 +2844,7 @@ if(a = 10){
         {
 
             question:
-            "Find the mistake in this loop.",
+                "Find the mistake in this loop.",
 
             code:
 `for(int i = 0; i < 10; i--){
@@ -2484,7 +2862,7 @@ if(a = 10){
             answer: 0,
 
             explanation:
-            "i-- moves away from 10. Use i++."
+                "i-- moves away from 10. Use i++."
 
         },
 
@@ -2492,7 +2870,7 @@ if(a = 10){
         {
 
             question:
-            "Find the mistake.",
+                "Find the mistake.",
 
             code:
 `int arr[3];
@@ -2508,7 +2886,7 @@ arr[3] = 50;`,
             answer: 0,
 
             explanation:
-            "Valid indexes are 0, 1 and 2."
+                "Valid indexes are 0, 1 and 2."
 
         }
 
@@ -2517,9 +2895,10 @@ arr[3] = 50;`,
 }
 
 
+
 /* =========================================================
    DRAW DEBUG
-   ========================================================= */
+========================================================= */
 
 function drawDebugQuestion() {
 
@@ -2542,88 +2921,92 @@ function drawDebugQuestion() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
 
-        <div class="question">
+            <div class="question">
 
-            <div class="question-number">
+                <div class="question-number">
 
-                DEBUG
-                ${debugIndex + 1}
-                /
-                ${debugQuestions.length}
+                    DEBUG
+                    ${debugIndex + 1}
+                    /
+                    ${debugQuestions.length}
+
+                </div>
+
+                <div class="question-text">
+
+                    ${escapeHTML(
+                        q.question
+                    )}
+
+                </div>
 
             </div>
 
-            <div class="question-text">
-                ${q.question}
+
+            <div class="debug-code">
+
+                <pre>${escapeHTML(
+                    q.code
+                )}</pre>
+
             </div>
 
-        </div>
+
+            <p class="debug-hint">
+
+                🕵️ Click the part
+                you think is wrong:
+
+            </p>
 
 
-        <div class="debug-code">
+            <div class="debug-options">
 
-            <pre>${escapeHTML(
-                q.code
-            )}</pre>
+                ${
+                    q.options
+                    .map(
+                        (option, index) => `
 
-        </div>
+                            <button
+                                class="debug-option"
+                                onclick="
+                                    debugAnswer(
+                                        ${index}
+                                    )
+                                "
+                            >
 
+                                ❌
+                                ${escapeHTML(
+                                    option
+                                )}
 
-        <p class="debug-hint">
+                            </button>
 
-            🕵️ Click the part you think is wrong:
+                        `
+                    )
+                    .join("")
+                }
 
-        </p>
-
-
-        <div class="debug-options">
-
-            ${
-                q.options
-                .map(
-                    (option, index) => `
-
-                    <button
-                        class="debug-option"
-                        onclick="
-                            debugAnswer(
-                                ${index}
-                            )
-                        "
-                    >
-
-                        ❌
-                        ${escapeHTML(
-                            option
-                        )}
-
-                    </button>
-
-                    `
-                )
-                .join("")
-            }
-
-        </div>
+            </div>
 
 
-        <div
-            id="debugResult"
-        ></div>
+            <div id="debugResult"></div>
 
-    `;
+        `;
 
 }
 
 
+
 /* =========================================================
    DEBUG ANSWER
-   ========================================================= */
+========================================================= */
 
 function debugAnswer(index) {
 
@@ -2640,8 +3023,12 @@ function debugAnswer(index) {
 
 
     buttons.forEach(
-        button =>
-        button.disabled = true
+        button => {
+
+            button.disabled =
+                true;
+
+        }
     );
 
 
@@ -2651,10 +3038,11 @@ function debugAnswer(index) {
 
         debugScore++;
 
+
         buttons[index]
-        .classList.add(
-            "correct"
-        );
+            .classList.add(
+                "correct"
+            );
 
 
         successSound();
@@ -2663,77 +3051,80 @@ function debugAnswer(index) {
 
 
         document
-        .getElementById(
-            "debugResult"
-        )
-        .innerHTML = `
+            .getElementById(
+                "debugResult"
+            )
+            .innerHTML = `
 
-            <div class="meme">
+                <div class="meme">
 
-                <div class="emoji">
-                    🐛🔨😎
+                    <div class="emoji">
+                        🐛🔨😎
+                    </div>
+
+                    <b>
+                        BUG DESTROYED! 🔥
+                    </b>
+
+                    <p>
+                        ${escapeHTML(
+                            q.explanation ||
+                            "Correct!"
+                        )}
+                    </p>
+
                 </div>
 
-                <b>
-                    BUG DESTROYED! 🔥
-                </b>
-
-                <p>
-                    ${escapeHTML(
-                        q.explanation ||
-                        "Correct!"
-                    )}
-                </p>
-
-            </div>
-
-        `;
+            `;
 
     }
 
     else {
 
         buttons[index]
-        .classList.add(
-            "wrong"
-        );
+            .classList.add(
+                "wrong"
+            );
 
 
         buttons[q.answer]
-        .classList.add(
-            "correct"
-        );
+            .classList.add(
+                "correct"
+            );
 
 
         wrongSound();
 
 
         document
-        .getElementById(
-            "debugResult"
-        )
-        .innerHTML = `
+            .getElementById(
+                "debugResult"
+            )
+            .innerHTML = `
 
-            <div class="meme">
+                <div class="meme">
 
-                <div class="emoji">
-                    🤦‍♀️💻
+                    <div class="emoji">
+                        🤦‍♀️💻
+                    </div>
+
+                    <b>
+                        FAHHHH!
+                        Wrong bug! 😂
+                    </b>
+
+                    <p>
+                        Correct answer:
+                        ${escapeHTML(
+                            q.options[
+                                q.answer
+                            ]
+                        )}
+                    </p>
+
                 </div>
 
-                <b>
-                    FAHHHH! Wrong bug! 😂
-                </b>
-
-                <p>
-                    Correct answer:
-                    ${escapeHTML(
-                        q.options[q.answer]
-                    )}
-                </p>
-
-            </div>
-
-        `;
+            `;
 
     }
 
@@ -2752,104 +3143,106 @@ function debugAnswer(index) {
 }
 
 
+
 /* =========================================================
    DEBUG FINISH
-   ========================================================= */
+========================================================= */
 
-async function finishDebug() {
+function finishDebug() {
 
     successSound();
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
 
-        <div class="meme">
+            <div class="meme">
 
-            <div class="emoji">
-                🛠️🏆🎉
+                <div class="emoji">
+                    🛠️🏆🎉
+                </div>
+
+                <h2>
+                    Debugging Complete!
+                </h2>
+
+                <p>
+                    You destroyed
+                    ${debugScore}
+                    /
+                    ${debugQuestions.length}
+                    bugs.
+                </p>
+
+                <br>
+
+                <button onclick="startDebug()">
+                    🔄 Debug Again
+                </button>
+
             </div>
 
-            <h2>
-                Debugging Complete!
-            </h2>
-
-            <p>
-                You destroyed
-                ${debugScore}
-                /
-                ${debugQuestions.length}
-                bugs.
-            </p>
-
-            <br>
-
-            <button
-                onclick="startDebug()"
-            >
-                🔄 Debug Again
-            </button>
-
-        </div>
-
-    `;
+        `;
 
 }
 
 
+
 /* =========================================================
    BOMB MODE
-   ========================================================= */
+========================================================= */
 
 async function startBomb() {
 
-    clearInterval(bombTimer);
+    clearInterval(
+        bombTimer
+    );
 
 
     document
-    .getElementById(
-        "arenaTitle"
-    )
-    .textContent =
-    "💣 Bomb Defusal Mode";
+        .getElementById(
+            "arenaTitle"
+        )
+        .textContent =
+        "💣 Bomb Defusal Mode";
 
 
     document
-    .getElementById(
-        "arenaSubtitle"
-    )
-    .textContent =
-    `${currentSubject} • Defuse before time runs out`;
-
+        .getElementById(
+            "arenaSubtitle"
+        )
+        .textContent =
+        `${currentSubject} • Defuse before time runs out`;
 
 
     const level =
         Number(
             document
-            .getElementById(
-                "level"
-            )
-            .textContent
+                .getElementById(
+                    "level"
+                )
+                .textContent
         ) || 1;
 
 
     const data =
         await api(
-
             `/api/questions?subject=${
                 encodeURIComponent(
                     currentSubject
                 )
             }&level=${level}`
-
         );
 
 
     let questions =
-        data.questions || [];
+        data &&
+        Array.isArray(data.questions)
+        ? data.questions
+        : [];
 
 
     if (
@@ -2857,9 +3250,7 @@ async function startBomb() {
     ) {
 
         questions =
-            getFallbackBombQuestions(
-                currentSubject
-            );
+            getFallbackBombQuestions();
 
     }
 
@@ -2868,7 +3259,8 @@ async function startBomb() {
         questions[
             Math.floor(
                 Math.random()
-                * questions.length
+                *
+                questions.length
             )
         ];
 
@@ -2885,83 +3277,88 @@ async function startBomb() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
 
-        <div class="bomb-wrapper">
+            <div class="bomb-wrapper">
 
-            <div class="bomb-header">
+                <div class="bomb-header">
 
-                <span>
-                    💣 BOMB MODE
-                </span>
+                    <span>
+                        💣 BOMB MODE
+                    </span>
 
-                <strong
-                    id="bombTimer"
-                >
-                    ${bombSeconds}
-                </strong>
+                    <strong
+                        id="bombTimer"
+                    >
+                        ${bombSeconds}
+                    </strong>
+
+                </div>
+
+
+                <div class="bomb-body">
+
+                    <div class="bomb-icon">
+                        💣
+                    </div>
+
+
+                    <div class="question">
+
+                        <div class="question-number">
+                            DEFUSE QUESTION
+                        </div>
+
+                        <div class="question-text">
+
+                            ${escapeHTML(
+                                randomQuestion.question
+                            )}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="bomb-options">
+
+                        ${
+                            randomQuestion.options
+                            .map(
+                                (option, index) => `
+
+                                    <button
+                                        onclick="
+                                            checkBomb(
+                                                ${index}
+                                            )
+                                        "
+                                    >
+
+                                        ${escapeHTML(
+                                            option
+                                        )}
+
+                                    </button>
+
+                                `
+                            )
+                            .join("")
+                        }
+
+                    </div>
+
+
+                    <div id="bombResult"></div>
+
+                </div>
 
             </div>
 
-
-            <div class="bomb-body">
-
-                <div class="bomb-icon">
-                    💣
-                </div>
-
-                <div class="question">
-
-                    <div class="question-number">
-                        DEFUSE QUESTION
-                    </div>
-
-                    <div class="question-text">
-                        ${randomQuestion.question}
-                    </div>
-
-                </div>
-
-
-                <div class="bomb-options">
-
-                    ${
-                        randomQuestion.options
-                        .map(
-                            (option, index) => `
-
-                            <button
-                                onclick="
-                                    checkBomb(
-                                        ${index}
-                                    )
-                                "
-                            >
-                                ${escapeHTML(
-                                    option
-                                )}
-                            </button>
-
-                            `
-                        )
-                        .join("")
-                    }
-
-                </div>
-
-
-                <div
-                    id="bombResult"
-                ></div>
-
-            </div>
-
-        </div>
-
-    `;
+        `;
 
 
     bombTimer =
@@ -2973,18 +3370,19 @@ async function startBomb() {
 }
 
 
-/* =========================================================
-   FALLBACK BOMB QUESTIONS
-   ========================================================= */
 
-function getFallbackBombQuestions(subject) {
+/* =========================================================
+   BOMB QUESTIONS
+========================================================= */
+
+function getFallbackBombQuestions() {
 
     return [
 
         {
 
             question:
-            "Which data structure follows FIFO?",
+                "Which data structure follows FIFO?",
 
             options: [
                 "Stack",
@@ -3001,7 +3399,7 @@ function getFallbackBombQuestions(subject) {
         {
 
             question:
-            "Which data structure follows LIFO?",
+                "Which data structure follows LIFO?",
 
             options: [
                 "Queue",
@@ -3018,13 +3416,30 @@ function getFallbackBombQuestions(subject) {
         {
 
             question:
-            "Which keyword defines a function in Python?",
+                "Which keyword defines a function in Python?",
 
             options: [
                 "function",
                 "def",
                 "func",
                 "define"
+            ],
+
+            answer: 1
+
+        },
+
+
+        {
+
+            question:
+                "Which symbol checks equality?",
+
+            options: [
+                "=",
+                "==",
+                "!=",
+                "<="
             ],
 
             answer: 1
@@ -3036,9 +3451,10 @@ function getFallbackBombQuestions(subject) {
 }
 
 
+
 /* =========================================================
    BOMB TIMER
-   ========================================================= */
+========================================================= */
 
 function updateBombTimer() {
 
@@ -3092,16 +3508,20 @@ function updateBombTimer() {
 }
 
 
+
 /* =========================================================
    CHECK BOMB
-   ========================================================= */
+========================================================= */
 
 function checkBomb(index) {
 
     if (
         !window.currentBombQuestion
-    )
+    ) {
+
         return;
+
+    }
 
 
     clearInterval(
@@ -3120,8 +3540,12 @@ function checkBomb(index) {
 
 
     buttons.forEach(
-        button =>
-        button.disabled = true
+        button => {
+
+            button.disabled =
+                true;
+
+        }
     );
 
 
@@ -3130,9 +3554,9 @@ function checkBomb(index) {
     ) {
 
         buttons[index]
-        .classList.add(
-            "correct"
-        );
+            .classList.add(
+                "correct"
+            );
 
 
         successSound();
@@ -3141,55 +3565,56 @@ function checkBomb(index) {
 
 
         document
-        .getElementById(
-            "bombResult"
-        )
-        .innerHTML = `
+            .getElementById(
+                "bombResult"
+            )
+            .innerHTML = `
 
-            <div class="meme">
+                <div class="meme">
 
-                <div class="emoji">
-                    💣😎🎉
+                    <div class="emoji">
+                        💣😎🎉
+                    </div>
+
+                    <h2>
+                        BOMB DEFUSED!
+                    </h2>
+
+                    <p>
+                        Great job!
+                        You saved the mission! 🚀
+                    </p>
+
+                    <br>
+
+                    <button
+                        onclick="startBomb()"
+                    >
+                        🔄 Next Bomb
+                    </button>
+
                 </div>
 
-                <h2>
-                    BOMB DEFUSED!
-                </h2>
-
-                <p>
-                    Great job!
-                    You saved the mission! 🚀
-                </p>
-
-                <br>
-
-                <button
-                    onclick="startBomb()"
-                >
-                    🔄 Next Bomb
-                </button>
-
-            </div>
-
-        `;
+            `;
 
     }
 
     else {
 
         buttons[index]
-        .classList.add(
-            "wrong"
-        );
+            .classList.add(
+                "wrong"
+            );
 
 
         buttons[q.answer]
-        .classList.add(
-            "correct"
-        );
+            .classList.add(
+                "correct"
+            );
 
 
         wrongSound();
+
 
         setTimeout(
             explodeBomb,
@@ -3201,9 +3626,10 @@ function checkBomb(index) {
 }
 
 
+
 /* =========================================================
-   EXPLODE BOMB
-   ========================================================= */
+   EXPLODE
+========================================================= */
 
 function explodeBomb() {
 
@@ -3216,43 +3642,42 @@ function explodeBomb() {
 
 
     document
-    .getElementById(
-        "arenaContent"
-    )
-    .innerHTML = `
+        .getElementById(
+            "arenaContent"
+        )
+        .innerHTML = `
 
-        <div class="bomb-explosion">
+            <div class="bomb-explosion">
 
-            <div class="explosion">
-                💥
+                <div class="explosion">
+                    💥
+                </div>
+
+                <h1>
+                    BOOOOOOM! 💣
+                </h1>
+
+                <p>
+                    Time's up! Try again. 😂
+                </p>
+
+                <br>
+
+                <button onclick="startBomb()">
+                    🔄 Try Again
+                </button>
+
             </div>
 
-            <h1>
-                BOOOOOOM! 💣
-            </h1>
-
-            <p>
-                FAHHHH! Time's up! 😂
-            </p>
-
-            <br>
-
-            <button
-                onclick="startBomb()"
-            >
-                🔄 Try Again
-            </button>
-
-        </div>
-
-    `;
+        `;
 
 }
 
 
+
 /* =========================================================
    CLOSE ARENA
-   ========================================================= */
+========================================================= */
 
 function closeArena() {
 
@@ -3266,64 +3691,27 @@ function closeArena() {
     );
 
 
-    document
-    .getElementById(
-        "arena"
-    )
-    .classList.add(
-        "hidden"
-    );
-
-}
+    const arena =
+        document.getElementById(
+            "arena"
+        );
 
 
-/* =========================================================
-   ESCAPE HTML
-   ========================================================= */
+    if (arena) {
 
-function escapeHTML(value) {
-
-    if (
-        value === undefined ||
-        value === null
-    ) {
-
-        return "";
+        arena.classList.add(
+            "hidden"
+        );
 
     }
 
-
-    return String(value)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
 }
 
 
+
 /* =========================================================
    CONFETTI
-   ========================================================= */
-/* =========================================================
-   CONFETTI
-   ========================================================= */
+========================================================= */
 
 function confetti() {
 
@@ -3334,7 +3722,9 @@ function confetti() {
     ) {
 
         const piece =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
 
         piece.style.position =
@@ -3358,11 +3748,12 @@ function confetti() {
 
 
         piece.style.background =
-            "#"
-            +
+            "#" +
             Math.floor(
-                Math.random() * 16777215
-            ).toString(16);
+                Math.random() *
+                16777215
+            )
+            .toString(16);
 
 
         piece.style.zIndex =
@@ -3373,9 +3764,9 @@ function confetti() {
             "3px";
 
 
-        document
-            .body
-            .appendChild(piece);
+        document.body.appendChild(
+            piece
+        );
 
 
         let top = 0;
@@ -3401,7 +3792,9 @@ function confetti() {
                         window.innerHeight
                     ) {
 
-                        clearInterval(timer);
+                        clearInterval(
+                            timer
+                        );
 
                         piece.remove();
 
@@ -3413,18 +3806,20 @@ function confetti() {
 
     }
 
-}   // ⭐ CONFETTI এখানেই CLOSE হবে
+}
 
 
 
 /* =========================================================
    TOAST
-   ========================================================= */
+========================================================= */
 
 function showToast(message) {
 
     const toast =
-        document.getElementById("toast");
+        document.getElementById(
+            "toast"
+        );
 
 
     if (!toast) return;
@@ -3453,13 +3848,8 @@ function showToast(message) {
 
 
 /* =========================================================
-   EARN XP FEATURES
-   ========================================================= */
-
-
-/* =========================================================
-   VISUAL EXPERIMENT
-   ========================================================= */
+   EARN VISUAL XP
+========================================================= */
 
 function earnVisualXP() {
 
@@ -3468,106 +3858,25 @@ function earnVisualXP() {
     );
 
 
-    if (
-        typeof openArena === "function"
-    ) {
-
-        openArena("visual");
-
-    }
-
-    else {
-
-        showToast(
-            "⚠️ Visual Experiment is not available yet."
-        );
-
-    }
+    openArena(
+        "visual"
+    );
 
 }
 
-
-
-/* =========================================================
-   HELP A STUDENT
-   ========================================================= */
-
-function helpStudent() {
-
-    closeCommunityModal();
-
-
-    const overlay =
-        document.createElement("div");
-
-
-    overlay.className =
-        "share-modal-overlay";
-
-
-    overlay.innerHTML = `
-
-        <div class="share-modal">
-
-            <h2>💬 Help a Student</h2>
-
-            <p class="modal-subtitle">
-                Share your programming knowledge
-                with another learner.
-            </p>
-
-
-            <label for="studentTip">
-                Your Programming Tip
-            </label>
-
-
-            <textarea
-                id="studentTip"
-                placeholder="Example: In Python, == is used to compare two values."
-            ></textarea>
-
-
-            <div class="modal-buttons">
-
-                <button
-                    type="button"
-                    class="modal-cancel"
-                    onclick="closeCommunityModal()"
-                >
-                    Cancel
-                </button>
-
-
-                <button
-                    type="button"
-                    class="modal-submit"
-                    onclick="submitStudentHelp()"
-                >
-                    💬 Share Knowledge
-                </button>
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    document.body.appendChild(overlay);
-
-}
 
 
 
 /* =========================================================
    SUBMIT STUDENT HELP
-   ========================================================= */
+========================================================= */
 
 function submitStudentHelp() {
 
     const input =
-        document.getElementById("studentTip");
+        document.getElementById(
+            "studentTip"
+        );
 
 
     if (!input) return;
@@ -3577,7 +3886,7 @@ function submitStudentHelp() {
         input.value.trim();
 
 
-    if (tip === "") {
+    if (!tip) {
 
         showToast(
             "⚠️ Please write a programming tip first!"
@@ -3607,28 +3916,22 @@ function submitStudentHelp() {
                     💬🎉
                 </div>
 
-
                 <h2>
                     Knowledge Shared!
                 </h2>
-
 
                 <p>
                     Your programming tip has been
                     shared successfully.
                 </p>
 
-
                 <div class="community-note">
                     ${escapeHTML(tip)}
                 </div>
 
-
                 <br>
 
-
                 <button
-                    type="button"
                     class="modal-submit"
                     onclick="closeCommunityModal()"
                 >
@@ -3654,8 +3957,8 @@ function submitStudentHelp() {
 
 
 /* =========================================================
-   SHARE USEFUL NOTES
-   ========================================================= */
+   SHARE NOTES
+========================================================= */
 
 function shareNotes() {
 
@@ -3663,7 +3966,9 @@ function shareNotes() {
 
 
     const overlay =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
 
     overlay.className =
@@ -3674,7 +3979,9 @@ function shareNotes() {
 
         <div class="share-modal">
 
-            <h2>📚 Share Useful Notes</h2>
+            <h2>
+                📚 Share Useful Notes
+            </h2>
 
 
             <p class="modal-subtitle">
@@ -3683,7 +3990,7 @@ function shareNotes() {
             </p>
 
 
-            <label for="noteTitle">
+            <label>
                 Note Title
             </label>
 
@@ -3695,7 +4002,7 @@ function shareNotes() {
             >
 
 
-            <label for="noteContent">
+            <label>
                 Your Notes
             </label>
 
@@ -3709,7 +4016,6 @@ function shareNotes() {
             <div class="modal-buttons">
 
                 <button
-                    type="button"
                     class="modal-cancel"
                     onclick="closeCommunityModal()"
                 >
@@ -3718,7 +4024,6 @@ function shareNotes() {
 
 
                 <button
-                    type="button"
                     class="modal-submit"
                     onclick="submitNotes()"
                 >
@@ -3732,7 +4037,9 @@ function shareNotes() {
     `;
 
 
-    document.body.appendChild(overlay);
+    document.body.appendChild(
+        overlay
+    );
 
 }
 
@@ -3740,16 +4047,20 @@ function shareNotes() {
 
 /* =========================================================
    SUBMIT NOTES
-   ========================================================= */
+========================================================= */
 
 function submitNotes() {
 
     const titleInput =
-        document.getElementById("noteTitle");
+        document.getElementById(
+            "noteTitle"
+        );
 
 
     const contentInput =
-        document.getElementById("noteContent");
+        document.getElementById(
+            "noteContent"
+        );
 
 
     if (
@@ -3770,7 +4081,7 @@ function submitNotes() {
         contentInput.value.trim();
 
 
-    if (title === "") {
+    if (!title) {
 
         showToast(
             "⚠️ Please enter a note title!"
@@ -3781,7 +4092,7 @@ function submitNotes() {
     }
 
 
-    if (content === "") {
+    if (!content) {
 
         showToast(
             "⚠️ Please write your notes!"
@@ -3840,7 +4151,6 @@ function submitNotes() {
 
 
                 <button
-                    type="button"
                     class="modal-submit"
                     onclick="closeCommunityModal()"
                 >
@@ -3866,8 +4176,8 @@ function submitNotes() {
 
 
 /* =========================================================
-   CLOSE COMMUNITY MODAL
-   ========================================================= */
+   CLOSE MODAL
+========================================================= */
 
 function closeCommunityModal() {
 
@@ -3889,7 +4199,7 @@ function closeCommunityModal() {
 
 /* =========================================================
    ESCAPE HTML
-   ========================================================= */
+========================================================= */
 
 function escapeHTML(value) {
 
@@ -3934,5 +4244,15 @@ function escapeHTML(value) {
 
 
 
+/* =========================================================
+   START APP
+========================================================= */
 
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
 
+        init();
+
+    }
+);
